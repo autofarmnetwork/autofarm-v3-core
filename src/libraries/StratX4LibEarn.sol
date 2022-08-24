@@ -4,11 +4,11 @@ pragma solidity ^0.8.13;
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SSTORE2} from "solmate/utils/SSTORE2.sol";
+import {IUniswapV2Pair} from "@uniswap/v2-core/interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router02} from
   "@uniswap/v2-periphery/interfaces/IUniswapV2Router02.sol";
 
 import "./Uniswap.sol";
-import "../interfaces/IPancakePair.sol";
 import "./StratX3Lib.sol";
 import "../StratX4.sol";
 
@@ -157,7 +157,7 @@ library StratX4LibEarn {
     uint256 reserveBase;
     {
       (uint256 reserve0, uint256 reserve1,) =
-        IPancakePair(address(asset)).getReserves();
+        IUniswapV2Pair(address(asset)).getReserves();
       reserveBase =
         earnConfig.tokenBase < earnConfig.tokenOther ? reserve0 : reserve1;
     }
@@ -183,7 +183,7 @@ library StratX4LibEarn {
     uint256 reserveBase;
     {
       (uint256 reserve0, uint256 reserve1,) =
-        IPancakePair(address(asset)).getReserves();
+        IUniswapV2Pair(address(asset)).getReserves();
       reserveBase = tokenBase < tokenOther ? reserve0 : reserve1;
     }
     uint256 reserveBaseInReward =
@@ -204,7 +204,7 @@ library StratX4LibEarn {
     uint256 reserveBase;
     {
       (uint256 reserve0, uint256 reserve1,) =
-        IPancakePair(address(asset)).getReserves();
+        IUniswapV2Pair(address(asset)).getReserves();
       reserveBase =
         earnConfig.tokenBase < earnConfig.tokenOther ? reserve0 : reserve1;
     }
@@ -231,7 +231,7 @@ library StratX4LibEarn {
     uint256 reserveBase;
     {
       (uint256 reserve0, uint256 reserve1,) =
-        IPancakePair(address(asset)).getReserves();
+        IUniswapV2Pair(address(asset)).getReserves();
       reserveBase = tokenBase < tokenOther ? reserve0 : reserve1;
     }
     uint256 reserveBaseInEth =

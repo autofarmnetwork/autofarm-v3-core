@@ -128,9 +128,9 @@ library Uniswap {
     pure
     returns (uint256 amountB)
   {
-    require(amountA > 0, "PancakeLibrary: INSUFFICIENT_AMOUNT");
+    require(amountA > 0, "UniswapV2Library: INSUFFICIENT_AMOUNT");
     require(
-      reserveA > 0 && reserveB > 0, "PancakeLibrary: INSUFFICIENT_LIQUIDITY"
+      reserveA > 0 && reserveB > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY"
     );
     amountB = amountA * reserveB / reserveA;
   }

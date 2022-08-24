@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SSTORE2} from "solmate/utils/SSTORE2.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {Auth, Authority} from "solmate/auth/authorities/RolesAuthority.sol";
 
