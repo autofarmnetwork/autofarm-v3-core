@@ -28,6 +28,26 @@ Autofarm V2
 - Automated testing by forking mainnet for all vaults before deployment.
 
 
+## Design Principles
+
+### Immutability
+As with V1, Strats are not equipped with centralised migrator method,
+nor is the core Strat behaviour configurable after deployment,
+such as the Strat's contract code, underlying asset and farm, earned token,
+and compounding swaps path.
+This ensures users' risk assessments upon their deposit is respected.
+
+### Progressive decentralization
+Allowing team members from different timezones to pause Strats
+and unlock assets increases the response time to emergency situations.
+The Strats are also equipped with Rescue Operations method,
+which is centralised but trustless.
+
+### Composability
+StratX4 is agnostic of the underlying farming and compounding logic.
+This allows faster development of new vaults.
+
+
 ## Bibliography
 
 - Yearn's ERC4626 Motivation: (https://twitter.com/iearnfinance/status/1511444220850184197?s=20&t=Bfb2UbL-y6mS6QwME0Un-A)
