@@ -6,7 +6,8 @@ import "forge-std/console2.sol";
 
 import "solmate/tokens/ERC20.sol";
 import {Authority} from "solmate/auth/Auth.sol";
-import {MultiRolesAuthority} from "solmate/auth/authorities/MultiRolesAuthority.sol";
+import {MultiRolesAuthority} from
+  "solmate/auth/authorities/MultiRolesAuthority.sol";
 import {Roles, Configurer, deployer, keeper} from "../src/auth/Auth.sol";
 import {AutofarmFeesController} from "../src/FeesController.sol";
 import "constants/tokens.sol";
@@ -31,13 +32,9 @@ contract StratX4FeesWithoutConfigTest is Test {
   AutofarmFeesController public feesController;
 
   function setUp() public {
-	  vm.createSelectFork(BSC_RPC_URL);
+    vm.createSelectFork(BSC_RPC_URL);
     MultiRolesAuthority auth = Configurer.createAuthority();
-    auth.setUserRole(
-	    keeper,
-	    uint8(Roles.Keeper),
-	    true
-    );
+    auth.setUserRole(keeper, uint8(Roles.Keeper), true);
     feesController = new AutofarmFeesController(
      auth,
      treasury,
@@ -59,18 +56,10 @@ contract StratX4FeesTest is Test {
   AutofarmFeesController public feesController;
 
   function setUp() public {
-	  vm.createSelectFork(BSC_RPC_URL);
+    vm.createSelectFork(BSC_RPC_URL);
     MultiRolesAuthority auth = Configurer.createAuthority();
-    auth.setUserRole(
-	    keeper,
-	    uint8(Roles.Keeper),
-	    true
-    );
-    auth.setUserRole(
-	    deployer,
-	    uint8(Roles.Gov),
-	    true
-    );
+    auth.setUserRole(keeper, uint8(Roles.Keeper), true);
+    auth.setUserRole(deployer, uint8(Roles.Gov), true);
     auth.setOwner(deployer);
     // Configurer.addUser(auth, Roles.Dev, address(this));
     feesController = new AutofarmFeesController(

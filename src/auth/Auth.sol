@@ -18,9 +18,8 @@ enum Roles {
   Keeper, // Bot
   Guardian, // e.g. Luuk / Agus
   Dev, // e.g. Freeman
-  Gov  // e.g. Giraffe
+  Gov // e.g. Giraffe
 }
-
 
 library Configurer {
   function createAuthority() internal returns (MultiRolesAuthority authority) {

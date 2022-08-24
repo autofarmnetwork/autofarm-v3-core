@@ -10,7 +10,7 @@ import {FeeConfig} from "../StratX4.sol";
 import {StratX4_Masterchef} from "../farms/StratX4_Masterchef.sol";
 import {StratX4LibEarn} from "../libraries/StratX4LibEarn.sol";
 
-import "../../constants/tokens.sol";
+import "constants/tokens.sol";
 
 address constant LP_TOKEN = 0xaA2527ff1893e0D40d4a454623d362B79E8bb7F1; // WBNB-stkBNB
 address constant TOKEN_BASE = WBNB;
@@ -51,8 +51,9 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
     );
     uint256 zapSwapAmount;
     uint256 tokenOtherAmountOut;
-    (zapSwapAmount, tokenOtherAmountOut) =
-      Uniswap.calcSimpleZap(LP_TOKEN, pcsV2SwapFee, baseAmount, TOKEN_BASE, TOKEN_OTHER);
+    (zapSwapAmount, tokenOtherAmountOut) = Uniswap.calcSimpleZap(
+      LP_TOKEN, pcsV2SwapFee, baseAmount, TOKEN_BASE, TOKEN_OTHER
+    );
 
     assets = Uniswap.oneSidedSwap(
       LP_TOKEN,
@@ -64,9 +65,8 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
       address(this)
     );
   }
-/*
-   * Oracles
-   */
+
+  // Oracles
   function ethToWant() public view override returns (uint256) {
     address[] memory baseToEthPath = new address[](0);
 
