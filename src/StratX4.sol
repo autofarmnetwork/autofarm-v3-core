@@ -9,43 +9,6 @@ import {Auth, Authority} from "solmate/auth/authorities/RolesAuthority.sol";
 
 import "./libraries/StratX3Lib.sol";
 
-/*
- * WHAT'S NEW in V4
- * - Gas optimisations (Storage)
- *   - DONE: Uses `immutable` for permanent data (saves gas like `constant`)
- *   - DONE: Uses SSTORE2 to reduce gas for reading/writing storage vars
- *
- * - ERC4626 compatibility:
- *   - Transferable shares (for future Zap implementation)
- *   - Initial shares:token ratio is always 1
- *
- * - Gas optimisations (Earn swaps)
- *   - DONE: Reduce number of subswaps:
- *           Swap altogether to one of the tokens (e.g. WBNB)
- *           then swap ~half of the WBNB to the other token
- *   - DONE: Bypass dex router,
- *           swap directly through pairs to remove (safe)approval requirement
- *   - DONE: Aggregate fees to FeesController and convert to AUTO, burn etc in bulk
- *   - DONE: Ideal add liquidity ratio:
- *           Calculate ideal ratio before adding liquidity
- *
- * - No entrance fee
- * - DONE: Vesting profit
- *
- * - Decentralised Earn:
- *   - DONE: Calc ideal time to compound
- *
- * - Custom fees
- *
- * - Rigorous testing
- *
- *
- * TODO:
- * - Voting/Bribe for implementing Strats (a la MeshSwap)
- * - DONE: Cut rewards before harvest
- *   - Do not convert to AUTO or ETH. Simply set aside?
- */
-
 struct FeeConfig {
   uint256 feeRate;
   address feesController;
