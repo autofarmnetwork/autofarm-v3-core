@@ -7,9 +7,8 @@ import "forge-std/console2.sol";
 
 import {Roles, Configurer, keeper, deployer} from "../src/auth/Auth.sol";
 import "solmate/tokens/ERC20.sol";
-import {
-  MultiRolesAuthority
-} from "solmate/auth/authorities/MultiRolesAuthority.sol";
+import {MultiRolesAuthority} from
+  "solmate/auth/authorities/MultiRolesAuthority.sol";
 import {IStratX4, FeeConfig} from "../src/StratX4.sol";
 import {SwapConfig, LP1EarnConfig} from "../src/libraries/StratX4LibEarn.sol";
 import {StratX4} from "../src/StratX4.sol";
@@ -56,24 +55,12 @@ abstract contract StratX4TestBase is Test {
   uint256 public forkId;
 
   constructor(string memory RPC_URL) {
-	  forkId = vm.createSelectFork(RPC_URL);
+    forkId = vm.createSelectFork(RPC_URL);
     feesController = vm.addr(RANDOM_SEED_1);
     auth = Configurer.createAuthority();
-    auth.setUserRole(
-	    keeper,
-	    uint8(Roles.Keeper),
-	    true
-    );
-    auth.setUserRole(
-	    deployer,
-	    uint8(Roles.Guardian),
-	    true
-    );
-    auth.setUserRole(
-	    deployer,
-	    uint8(Roles.Dev),
-	    true
-    );
+    auth.setUserRole(keeper, uint8(Roles.Keeper), true);
+    auth.setUserRole(deployer, uint8(Roles.Guardian), true);
+    auth.setUserRole(deployer, uint8(Roles.Dev), true);
   }
 }
 
@@ -184,7 +171,7 @@ abstract contract StratX4EarnTest is StratX4TestBase {
       blocksBetweenCompounds,
       blocksBetweenCompounds * 3 / 60 / 60 / 24
     );
-    console2.log("pendingRewards in BSW", strat.pendingRewards());
+    console2.log("pendingRewards", strat.pendingRewards());
     console2.log("expected harvest", expectedHarvest);
   }
 

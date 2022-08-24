@@ -168,6 +168,31 @@ library StratX4LibEarn {
     return lpTotalSupply * 1e18 / (reserveBaseInReward * 2);
   }
 
+  function _rewardToWantLP1(
+    ERC20 asset,
+    address tokenBase,
+    address tokenOther,
+    address oracleRouter,
+    address[] memory baseToRewardPath
+  )
+    internal
+    view
+    returns (uint256)
+  {
+    uint256 lpTotalSupply = asset.totalSupply();
+    uint256 reserveBase;
+    {
+      (uint256 reserve0, uint256 reserve1,) =
+        IPancakePair(address(asset)).getReserves();
+      reserveBase = tokenBase < tokenOther ? reserve0 : reserve1;
+    }
+    uint256 reserveBaseInReward =
+      baseToRewardPath.length >= 2
+      ? oracle(oracleRouter, reserveBase, baseToRewardPath)
+      : reserveBase;
+    return lpTotalSupply * 1e18 / (reserveBaseInReward * 2);
+  }
+
   function ethToWantLP1(ERC20 asset, address earnConfigPointer)
     internal
     view
@@ -186,6 +211,32 @@ library StratX4LibEarn {
     uint256 reserveBaseInEth =
       earnConfig.baseToEthPath.length >= 2
       ? oracle(earnConfig.oracleRouter, reserveBase, earnConfig.baseToEthPath)
+      : reserveBase;
+
+    return lpTotalSupply * 1e18 / (reserveBaseInEth * 2);
+  }
+
+  function _ethToWantLP1(
+    ERC20 asset,
+    address tokenBase,
+    address tokenOther,
+    address oracleRouter,
+    address[] memory baseToEthPath
+  )
+    internal
+    view
+    returns (uint256)
+  {
+    uint256 lpTotalSupply = asset.totalSupply();
+    uint256 reserveBase;
+    {
+      (uint256 reserve0, uint256 reserve1,) =
+        IPancakePair(address(asset)).getReserves();
+      reserveBase = tokenBase < tokenOther ? reserve0 : reserve1;
+    }
+    uint256 reserveBaseInEth =
+      baseToEthPath.length >= 2
+      ? oracle(oracleRouter, reserveBase, baseToEthPath)
       : reserveBase;
 
     return lpTotalSupply * 1e18 / (reserveBaseInEth * 2);
