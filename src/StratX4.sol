@@ -81,6 +81,7 @@ abstract contract StratX4 is ERC4626, Auth {
     earnedAddress = ERC20(_earnedAddress);
     farmContractAddress = _farmContractAddress;
     feeConfigPointer = SSTORE2.write(abi.encode(_feeConfig));
+    ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
   }
 
   /**

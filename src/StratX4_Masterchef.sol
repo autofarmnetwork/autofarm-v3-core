@@ -34,7 +34,6 @@ abstract contract StratX4_Masterchef is StratX4 {
   {
     pid = _pid;
     pendingRewardsSelector = _pendingRewardsSelector;
-    asset.safeApprove(farmContractAddress, type(uint256).max);
   }
 
   // ERC4626 compatibility
