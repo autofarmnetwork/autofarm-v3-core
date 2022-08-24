@@ -2,12 +2,13 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {Authority} from "solmate/auth/Auth.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import "../libraries/Uniswap.sol";
 
-import "../StratX4_Masterchef.sol";
-import {LP1EarnConfig, StratX4LibEarn} from "../libraries/StratX4LibEarn.sol";
+import {FeeConfig} from "../StratX4.sol";
+import {StratX4_Masterchef} from "../farms/StratX4_Masterchef.sol";
+import {StratX4LibEarn} from "../libraries/StratX4LibEarn.sol";
 
 import "../../constants/tokens.sol";
 

@@ -5,8 +5,8 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
-import "./StratX4.sol";
-import "./interfaces/IPancakeswapFarm.sol";
+import "../StratX4.sol";
+import "../interfaces/IPancakeswapFarm.sol";
 
 /*
  * Farm Requirements
