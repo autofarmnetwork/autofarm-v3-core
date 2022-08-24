@@ -15,7 +15,7 @@ address constant LP_TOKEN = 0xaA2527ff1893e0D40d4a454623d362B79E8bb7F1; // WBNB-
 address constant TOKEN_BASE = WBNB;
 address constant TOKEN_OTHER = 0xc2E9d07F66A89c44062459A47a0D2Dc038E4fb16; // stkBNB
 address constant REWARD = CAKE;
-address constants REWARD_BASE_PAIR = CAKE_BNB_PAIR;
+address constant REWARD_BASE_PAIR = CAKE_BNB_PAIR;
 bytes4 constant pendingRewardSelector =
   bytes4(keccak256(abi.encodePacked("pendingCake(uint256,address)")));
 
@@ -63,7 +63,7 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
       address(this)
     );
   }
-TOKEN_BASE  /*
+/*
    * Oracles
    */
   function ethToWant() public view override returns (uint256) {
