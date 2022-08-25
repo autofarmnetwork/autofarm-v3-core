@@ -24,14 +24,13 @@ abstract contract StratX4_Masterchef is StratX4 {
 
   constructor(
     address _asset,
-    address _earnedAddress,
     address _farmContractAddress,
     uint256 _pid,
     bytes4 _pendingRewardsSelector,
     FeeConfig memory _feeConfig,
     Authority _authority
   )
-    StratX4(_asset, _earnedAddress, _farmContractAddress, _feeConfig, _authority)
+    StratX4(_asset, _farmContractAddress, _feeConfig, _authority)
   {
     pid = _pid;
     pendingRewardsSelector = _pendingRewardsSelector;

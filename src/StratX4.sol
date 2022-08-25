@@ -18,7 +18,7 @@ struct FeeConfig {
 uint256 constant SIX_HOURS = 21600; // in blocks
 
 interface IStratX4 {
-  function earn() external returns (uint256 compoundedAssets);
+  function earn() external returns (uint256 profit);
   function pendingRewards() external returns (uint256);
   function pendingUserRewards(address user) external returns (uint256);
   function deposit(uint256 assets, address receiver)
@@ -42,7 +42,6 @@ abstract contract StratX4 is ERC4626, Auth {
   uint256 constant PRECISION = 1e18;
 
   bool public paused;
-  ERC20 public immutable earnedAddress;
   address public immutable farmContractAddress;
   address public feeConfigPointer; // SSTORE2 pointer
   uint256 public lastEarnBlock = block.number;
@@ -57,7 +56,7 @@ abstract contract StratX4 is ERC4626, Auth {
 
   event FeesUpdated(uint256 feeRate, address rewardsAddress);
 
-  event Earn(uint256 rewardsHarvested, uint256 assetsIncrease);
+  event Earn(uint256 assetsIncrease);
 
   modifier isNotPaused() {
     require(!paused, "StratX4: Paused");
@@ -71,7 +70,6 @@ abstract contract StratX4 is ERC4626, Auth {
 
   constructor(
     address _asset,
-    address _earnedAddress,
     address _farmContractAddress,
     FeeConfig memory _feeConfig,
     Authority _authority
@@ -79,7 +77,6 @@ abstract contract StratX4 is ERC4626, Auth {
     ERC4626(ERC20(_asset), "Autofarm Strategy", "AUTOSTRAT")
     Auth(address(0), _authority)
   {
-    earnedAddress = ERC20(_earnedAddress);
     farmContractAddress = _farmContractAddress;
     feeConfigPointer = SSTORE2.write(abi.encode(_feeConfig));
     ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
@@ -153,58 +150,74 @@ abstract contract StratX4 is ERC4626, Auth {
     return pendingRewards() * balanceOf[user] / totalSupply;
   }
 
+
   /**
    * Compounding ***
    */
+  function getEarnedAddresses() public pure virtual returns (address[] memory) {}
+  function getEarnedAddress(uint256 index) public pure returns (address) {
+	  address[] memory earnedAddresses = getEarnedAddresses();
+	  require(index < earnedAddresses.length);
+	  return earnedAddresses[index];
+  }
 
   function earn()
     public
     requiresAuth
     isNotPaused
-    returns (uint256 compoundedAssets)
+    returns (uint256 profit)
   {
+	  address[] memory earnedAddresses = getEarnedAddresses();
     _harvest();
-    uint256 earnedAmt = earnedAddress.balanceOf(address(this));
-    require(earnedAmt > 0, "StratX4: No harvest");
 
-    // Handle Fees
-    FeeConfig memory feeConfig =
-      abi.decode(SSTORE2.read(feeConfigPointer), (FeeConfig));
+	  for (uint256 i; i < earnedAddresses.length;) {
+		  ERC20 earnedAddress = ERC20(earnedAddresses[i]);
+	    uint256 earnedAmt = earnedAddress.balanceOf(address(this));
+	    require(earnedAmt > 0, "StratX4: No harvest");
 
-    if (feeConfig.feeRate > 0 && feeConfig.feesController != address(0)) {
-      uint256 fee = earnedAmt.mulDivUp(feeConfig.feeRate, PRECISION);
-      require(fee > 0, "StratX4: No fees");
-      earnedAmt -= fee;
-      require(earnedAmt > 0, "StratX4: No harvest after fees");
-      earnedAddress.safeTransfer(feeConfig.feesController, fee);
-    }
+	    // Handle Fees
+	    FeeConfig memory feeConfig =
+	      abi.decode(SSTORE2.read(feeConfigPointer), (FeeConfig));
 
-    compoundedAssets = compound(earnedAmt);
-    _farm(compoundedAssets);
+	    if (feeConfig.feeRate > 0 && feeConfig.feesController != address(0)) {
+	      uint256 fee = earnedAmt.mulDivUp(feeConfig.feeRate, PRECISION);
+	      require(fee > 0, "StratX4: No fees");
+	      earnedAmt -= fee;
+	      require(earnedAmt > 0, "StratX4: No harvest after fees");
+	      earnedAddress.safeTransfer(feeConfig.feesController, fee);
+	    }
 
-    _setProfitsVesting(compoundedAssets);
+	    profit += compound(earnedAddress, earnedAmt);
+	    unchecked {
+		    i++;
+	    }
+	  }
+
+    _farm(profit);
+
+    _setProfitsVesting(profit);
     lastEarnBlock = block.number;
 
-    emit Earn(earnedAmt, compoundedAssets);
+    emit Earn(profit);
   }
 
   // Increase vesting profits
   // Takes into account the previous unvested profits, if any
   // c.f. https://github.com/luiz-lvj/eth-amsterdam/blob/ff3a18581d73941fe520120fe2b239cf738b2b29/contracts/LeibnizVault.sol#L58
-  function _setProfitsVesting(uint256 compoundedAssets) internal {
+  function _setProfitsVesting(uint256 profit) internal {
     uint256 prevVestingEnd = lastEarnBlock + profitVestingPeriod;
 
     if (block.number >= prevVestingEnd) {
-      profitsVesting = compoundedAssets;
+      profitsVesting = profit;
       return;
     }
 
     profitsVesting = (prevVestingEnd - block.number).mulDivUp(
       profitsVesting, profitVestingPeriod
-    ) + compoundedAssets;
+    ) + profit;
   }
 
-  function compound(uint256 earnedAmt)
+  function compound(ERC20 earnedAddress, uint256 earnedAmt)
     internal
     virtual
     returns (uint256 assets)

@@ -189,9 +189,9 @@ abstract contract StratX4EarnTest is StratX4TestBase {
   function testFeesDepositedIntoController() public {
     vm.prank(keeper);
     strat.earn();
-    console2.log(strat.earnedAddress().balanceOf(feesController));
+    ERC20 rewardToken = ERC20(strat.getEarnedAddress(0));
     assertGe(
-      strat.earnedAddress().balanceOf(address(feesController)),
+      rewardToken.balanceOf(address(feesController)),
       pendingRewards * FEE_RATE / 1e18
     );
   }

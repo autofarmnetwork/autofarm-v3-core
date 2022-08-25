@@ -15,8 +15,9 @@ import "constants/tokens.sol";
 address constant LP_TOKEN = 0xaA2527ff1893e0D40d4a454623d362B79E8bb7F1; // WBNB-stkBNB
 address constant TOKEN_BASE = WBNB;
 address constant TOKEN_OTHER = 0xc2E9d07F66A89c44062459A47a0D2Dc038E4fb16; // stkBNB
-address constant REWARD = CAKE;
-address constant REWARD_BASE_PAIR = CAKE_BNB_PAIR;
+uint256 constant NUM_REWARDS = 1;
+address constant REWARD0 = CAKE;
+address constant REWARD0_BASE_PAIR = CAKE_BNB_PAIR;
 bytes4 constant pendingRewardSelector =
   bytes4(keccak256(abi.encodePacked("pendingCake(uint256,address)")));
 
@@ -31,7 +32,6 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
   constructor(FeeConfig memory _feeConfig, Authority _authority)
     StratX4_Masterchef(
       LP_TOKEN,
-      REWARD,
       dexFarm,
       PID,
       pendingRewardSelector,
@@ -40,14 +40,19 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
     )
   {}
 
-  function compound(uint256 earnedAmt)
+  function getEarnedAddresses() public pure override returns (address[] memory earnedAddresses) {
+	  earnedAddresses = new address[](NUM_REWARDS);
+	  earnedAddresses[0] = REWARD0;
+  }
+
+  function compound(ERC20 earnedAddress, uint256 earnedAmt)
     internal
     override
     returns (uint256 assets)
   {
-    ERC20(earnedAddress).safeTransfer(REWARD_BASE_PAIR, earnedAmt);
+    ERC20(earnedAddress).safeTransfer(REWARD0_BASE_PAIR, earnedAmt);
     uint256 baseAmount = Uniswap._swap(
-      REWARD_BASE_PAIR, pcsV2SwapFee, CAKE, TOKEN_BASE, earnedAmt, address(this)
+      REWARD0_BASE_PAIR, pcsV2SwapFee, CAKE, TOKEN_BASE, earnedAmt, address(this)
     );
     uint256 zapSwapAmount;
     uint256 tokenOtherAmountOut;
@@ -78,7 +83,7 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
   function rewardToWant() public view override returns (uint256) {
     address[] memory baseToRewardPath = new address[](2);
     baseToRewardPath[0] = TOKEN_BASE;
-    baseToRewardPath[1] = REWARD;
+    baseToRewardPath[1] = REWARD0;
 
     return StratX4LibEarn._rewardToWantLP1(
       asset, TOKEN_BASE, TOKEN_OTHER, dexRouter, baseToRewardPath
