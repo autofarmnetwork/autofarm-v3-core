@@ -15,6 +15,7 @@ import "constants/tokens.sol";
 address constant LP_TOKEN = 0xaA2527ff1893e0D40d4a454623d362B79E8bb7F1; // WBNB-stkBNB
 address constant TOKEN_BASE = WBNB;
 address constant TOKEN_OTHER = 0xc2E9d07F66A89c44062459A47a0D2Dc038E4fb16; // stkBNB
+
 uint256 constant NUM_REWARDS = 1;
 address constant REWARD0 = CAKE;
 address constant REWARD0_BASE_PAIR = CAKE_BNB_PAIR;
@@ -48,9 +49,17 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
   function compound(ERC20 earnedAddress, uint256 earnedAmt)
     internal
     override
-    returns (uint256 assets)
+    returns (uint256)
   {
-    ERC20(earnedAddress).safeTransfer(REWARD0_BASE_PAIR, earnedAmt);
+	  // If there are multiple rewards, add branches here
+		// if (address(earnedAddress) == REWARD0) {
+		//  return compoundREWARD0(earnedAmt);
+		// }
+	  return compoundREWARD0(earnedAmt);
+  }
+
+  function compoundREWARD0(uint256 earnedAmt) internal returns (uint256 assets) {
+    ERC20(REWARD0).safeTransfer(REWARD0_BASE_PAIR, earnedAmt);
     uint256 baseAmount = Uniswap._swap(
       REWARD0_BASE_PAIR, pcsV2SwapFee, CAKE, TOKEN_BASE, earnedAmt, address(this)
     );
