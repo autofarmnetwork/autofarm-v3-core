@@ -168,6 +168,9 @@ abstract contract StratX4 is ERC4626, Auth {
     returns (uint256 profit)
   {
 	  address[] memory earnedAddresses = getEarnedAddresses();
+    FeeConfig memory feeConfig =
+      abi.decode(SSTORE2.read(feeConfigPointer), (FeeConfig));
+
     _harvest();
 
 	  for (uint256 i; i < earnedAddresses.length;) {
@@ -176,9 +179,6 @@ abstract contract StratX4 is ERC4626, Auth {
 	    require(earnedAmt > 0, "StratX4: No harvest");
 
 	    // Handle Fees
-	    FeeConfig memory feeConfig =
-	      abi.decode(SSTORE2.read(feeConfigPointer), (FeeConfig));
-
 	    if (feeConfig.feeRate > 0 && feeConfig.feesController != address(0)) {
 	      uint256 fee = earnedAmt.mulDivUp(feeConfig.feeRate, PRECISION);
 	      require(fee > 0, "StratX4: No fees");
