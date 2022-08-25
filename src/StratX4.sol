@@ -17,24 +17,6 @@ struct FeeConfig {
 
 uint256 constant SIX_HOURS = 21600; // in blocks
 
-interface IStratX4 {
-  function earn() external returns (uint256 profit);
-  function pendingRewards() external returns (uint256);
-  function pendingUserRewards(address user) external returns (uint256);
-  function deposit(uint256 assets, address receiver)
-    external
-    returns (uint256 shares);
-  function withdraw(uint256 assets, address receiver, address owner)
-    external
-    returns (uint256 shares);
-  function pause() external;
-  function unpause() external;
-  function rewardToWant() external returns (uint256);
-  function nextOptimalEarnBlock(uint256 _r, uint256 gasCost)
-    external
-    returns (uint256);
-}
-
 abstract contract StratX4 is ERC4626, Auth {
   using SafeTransferLib for ERC20;
   using FixedPointMathLib for uint256;

@@ -9,7 +9,7 @@ import {Roles, Configurer, keeper, deployer} from "../src/auth/Auth.sol";
 import "solmate/tokens/ERC20.sol";
 import {MultiRolesAuthority} from
   "solmate/auth/authorities/MultiRolesAuthority.sol";
-import {IStratX4, FeeConfig} from "../src/StratX4.sol";
+import {FeeConfig} from "../src/StratX4.sol";
 import {SwapConfig, LP1EarnConfig} from "../src/libraries/StratX4LibEarn.sol";
 import {StratX4} from "../src/StratX4.sol";
 import {AutofarmFeesController} from "../src/FeesController.sol";
