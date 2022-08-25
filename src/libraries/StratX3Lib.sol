@@ -11,7 +11,6 @@ interface IReward {
 }
 
 library StratX3Lib {
-
   function _harvestReward(
     address[] memory rewarders,
     address _userAddress,

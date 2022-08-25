@@ -150,48 +150,43 @@ abstract contract StratX4 is ERC4626, Auth {
     return pendingRewards() * balanceOf[user] / totalSupply;
   }
 
-
   /**
    * Compounding ***
    */
   function getEarnedAddresses() public pure virtual returns (address[] memory) {}
+
   function getEarnedAddress(uint256 index) public pure returns (address) {
-	  address[] memory earnedAddresses = getEarnedAddresses();
-	  require(index < earnedAddresses.length);
-	  return earnedAddresses[index];
+    address[] memory earnedAddresses = getEarnedAddresses();
+    require(index < earnedAddresses.length);
+    return earnedAddresses[index];
   }
 
-  function earn()
-    public
-    requiresAuth
-    isNotPaused
-    returns (uint256 profit)
-  {
-	  address[] memory earnedAddresses = getEarnedAddresses();
+  function earn() public requiresAuth isNotPaused returns (uint256 profit) {
+    address[] memory earnedAddresses = getEarnedAddresses();
     FeeConfig memory feeConfig =
       abi.decode(SSTORE2.read(feeConfigPointer), (FeeConfig));
 
     _harvest();
 
-	  for (uint256 i; i < earnedAddresses.length;) {
-		  ERC20 earnedAddress = ERC20(earnedAddresses[i]);
-	    uint256 earnedAmt = earnedAddress.balanceOf(address(this));
-	    require(earnedAmt > 0, "StratX4: No harvest");
+    for (uint256 i; i < earnedAddresses.length;) {
+      ERC20 earnedAddress = ERC20(earnedAddresses[i]);
+      uint256 earnedAmt = earnedAddress.balanceOf(address(this));
+      require(earnedAmt > 0, "StratX4: No harvest");
 
-	    // Handle Fees
-	    if (feeConfig.feeRate > 0 && feeConfig.feesController != address(0)) {
-	      uint256 fee = earnedAmt.mulDivUp(feeConfig.feeRate, PRECISION);
-	      require(fee > 0, "StratX4: No fees");
-	      earnedAmt -= fee;
-	      require(earnedAmt > 0, "StratX4: No harvest after fees");
-	      earnedAddress.safeTransfer(feeConfig.feesController, fee);
-	    }
+      // Handle Fees
+      if (feeConfig.feeRate > 0 && feeConfig.feesController != address(0)) {
+        uint256 fee = earnedAmt.mulDivUp(feeConfig.feeRate, PRECISION);
+        require(fee > 0, "StratX4: No fees");
+        earnedAmt -= fee;
+        require(earnedAmt > 0, "StratX4: No harvest after fees");
+        earnedAddress.safeTransfer(feeConfig.feesController, fee);
+      }
 
-	    profit += compound(earnedAddress, earnedAmt);
-	    unchecked {
-		    i++;
-	    }
-	  }
+      profit += compound(earnedAddress, earnedAmt);
+      unchecked {
+        i++;
+      }
+    }
 
     _farm(profit);
 

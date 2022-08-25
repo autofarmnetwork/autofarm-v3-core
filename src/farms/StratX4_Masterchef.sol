@@ -39,8 +39,7 @@ abstract contract StratX4_Masterchef is StratX4 {
   // ERC4626 compatibility
 
   function _lockedAssets() internal view override returns (uint256) {
-    return IMasterchefV2(farmContractAddress).userInfo(pid, address(this))
-      .amount;
+    return IMasterchefV2(farmContractAddress).userInfo(pid, address(this)).amount;
   }
 
   function pendingRewards() public view override returns (uint256) {

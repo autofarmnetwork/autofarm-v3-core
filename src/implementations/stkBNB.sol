@@ -41,9 +41,14 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
     )
   {}
 
-  function getEarnedAddresses() public pure override returns (address[] memory earnedAddresses) {
-	  earnedAddresses = new address[](NUM_REWARDS);
-	  earnedAddresses[0] = REWARD0;
+  function getEarnedAddresses()
+    public
+    pure
+    override
+    returns (address[] memory earnedAddresses)
+  {
+    earnedAddresses = new address[](NUM_REWARDS);
+    earnedAddresses[0] = REWARD0;
   }
 
   function compound(ERC20 earnedAddress, uint256 earnedAmt)
@@ -51,17 +56,22 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
     override
     returns (uint256)
   {
-	  // If there are multiple rewards, add branches here
-		// if (address(earnedAddress) == REWARD0) {
-		//  return compoundREWARD0(earnedAmt);
-		// }
-	  return compoundREWARD0(earnedAmt);
+    // If there are multiple rewards, add branches here
+    // if (address(earnedAddress) == REWARD0) {
+    //  return compoundREWARD0(earnedAmt);
+    // }
+    return compoundREWARD0(earnedAmt);
   }
 
   function compoundREWARD0(uint256 earnedAmt) internal returns (uint256 assets) {
     ERC20(REWARD0).safeTransfer(REWARD0_BASE_PAIR, earnedAmt);
     uint256 baseAmount = Uniswap._swap(
-      REWARD0_BASE_PAIR, pcsV2SwapFee, CAKE, TOKEN_BASE, earnedAmt, address(this)
+      REWARD0_BASE_PAIR,
+      pcsV2SwapFee,
+      CAKE,
+      TOKEN_BASE,
+      earnedAmt,
+      address(this)
     );
     uint256 zapSwapAmount;
     uint256 tokenOtherAmountOut;
