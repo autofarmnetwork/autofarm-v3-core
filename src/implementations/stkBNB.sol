@@ -51,7 +51,7 @@ contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
     earnedAddresses[0] = REWARD0;
   }
 
-  function compound(ERC20 earnedAddress, uint256 earnedAmt)
+  function compound(ERC20, /*_earnedAddress*/ uint256 earnedAmt)
     internal
     override
     returns (uint256)

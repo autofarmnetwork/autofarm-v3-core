@@ -91,13 +91,16 @@ abstract contract StratX4 is ERC4626, Auth {
 
   function _lockedAssets() internal view virtual returns (uint256) {}
 
-  function afterDeposit(uint256 assets, uint256 shares) internal override {
+  function afterDeposit(uint256 assets, uint256 /*shares*/ ) internal override {
     if (!paused) {
       _farm(assets);
     }
   }
 
-  function beforeWithdraw(uint256 assets, uint256 shares) internal override {
+  function beforeWithdraw(uint256 assets, uint256 /*shares*/ )
+    internal
+    override
+  {
     if (!paused) {
       uint256 balance = asset.balanceOf(address(this));
       if (balance < assets) {

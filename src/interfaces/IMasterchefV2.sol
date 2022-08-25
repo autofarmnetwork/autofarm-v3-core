@@ -1,3 +1,5 @@
+pragma solidity ^0.8.13;
+
 interface IMasterchefV2 {
   struct UserInfo {
     uint256 amount;

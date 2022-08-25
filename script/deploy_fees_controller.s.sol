@@ -15,7 +15,7 @@ contract DeployFeesControllerScript is Script {
     vm.startBroadcast();
     Authority auth = Configurer.createAuthority();
 
-    AutofarmFeesController fc = new AutofarmFeesController(
+    new AutofarmFeesController(
      auth,
   	treasury,
   	SAV,
