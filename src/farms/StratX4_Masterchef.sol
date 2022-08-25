@@ -60,7 +60,7 @@ abstract contract StratX4_Masterchef is StratX4 {
     IMasterchefV2(farmContractAddress).withdraw(pid, wantAmt);
   }
 
-  function _harvest() internal override {
+  function _harvest() internal override virtual {
     IMasterchefV2(farmContractAddress).withdraw(pid, 0);
   }
 
