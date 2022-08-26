@@ -50,11 +50,16 @@ abstract contract StratX4TestBase is Test {
   uint256 constant FEE_RATE = 3e16;
   MultiRolesAuthority auth;
   address feesController;
+  FeeConfig defaultFeeConfig;
   StratX4 public strat;
 
   constructor(string memory chain, uint256 blockNumber) {
     vm.createSelectFork(vm.rpcUrl(chain), blockNumber);
     feesController = vm.addr(RANDOM_SEED_1);
+	  defaultFeeConfig = FeeConfig({
+     feeRate: FEE_RATE,
+     feesController: feesController
+	  });
     auth = Configurer.createAuthority();
     auth.setUserRole(keeper, uint8(Roles.Keeper), true);
     auth.setUserRole(deployer, uint8(Roles.Guardian), true);

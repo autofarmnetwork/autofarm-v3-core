@@ -12,6 +12,9 @@ import {StratX4LibEarn} from "../libraries/StratX4LibEarn.sol";
 
 import "constants/tokens.sol";
 
+string constant CHAIN = "bsc";
+uint256 constant TEST_BLOCK = 20770469;
+
 address constant LP_TOKEN = 0xaA2527ff1893e0D40d4a454623d362B79E8bb7F1; // WBNB-stkBNB
 address constant TOKEN_BASE = WBNB;
 address constant TOKEN_OTHER = 0xc2E9d07F66A89c44062459A47a0D2Dc038E4fb16; // stkBNB
@@ -26,7 +29,7 @@ address constant dexFarm = 0xa5f8C5Dbd5F286960b9d90548680aE5ebFf07652;
 uint256 constant pcsV2SwapFee = 9975;
 uint256 constant PID = 114;
 
-contract StratX4_WBNB_stkBNB is StratX4_Masterchef {
+contract Strat is StratX4_Masterchef {
   using SafeTransferLib for ERC20;
 
   constructor(FeeConfig memory _feeConfig, Authority _authority)
