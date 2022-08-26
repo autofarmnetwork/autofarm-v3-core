@@ -40,12 +40,8 @@ contract RewardsV4 {
     uint256 _startTimestamp,
     uint256 _endTimestamp
   ) {
-    require(
-      _startTimestamp > block.timestamp, "start timestamp must be in the future"
-    );
-    require(
-      _endTimestamp > _startTimestamp, "end timestamp must be in the future"
-    );
+    require(_startTimestamp > block.timestamp, "start timestamp must be in the future");
+    require(_endTimestamp > _startTimestamp, "end timestamp must be in the future");
     require(_emission > 0, "emission must be positive");
 
     // transferOwnership(msg.sender);
@@ -56,8 +52,7 @@ contract RewardsV4 {
     startTimestamp = _startTimestamp;
     endTimestamp = _endTimestamp;
 
-    lastRewardTimestamp =
-      block.timestamp > startTimestamp ? block.timestamp : startTimestamp;
+    lastRewardTimestamp = block.timestamp > startTimestamp ? block.timestamp : startTimestamp;
   }
 
   /*
@@ -92,11 +87,7 @@ contract RewardsV4 {
   }
 
   // Return reward multiplier over the given _from to _to block.
-  function getMultiplier(uint256 _from, uint256 _to)
-    public
-    view
-    returns (uint256)
-  {
+  function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
     if (endTimestamp == 0) {
       return _to - _from;
     }
@@ -109,25 +100,19 @@ contract RewardsV4 {
     return _to - _from;
   }
 
-  function pendingRewards(address _user)
-    external
-    view
-    returns (uint256 pending)
-  {
+  function pendingRewards(address _user) external view returns (uint256 pending) {
     UserInfo storage user = userInfo[_user];
     uint256 sharesTotal = strat.totalSupply();
     uint256 currentAccRewardsPerShare = accRewardsPerShare;
     if (block.timestamp > lastRewardTimestamp && sharesTotal != 0) {
       uint256 multiplier = getMultiplier(lastRewardTimestamp, block.timestamp);
       uint256 AUTOReward = multiplier * rewardTokensPerSecond;
-      currentAccRewardsPerShare =
-        accRewardsPerShare + (AUTOReward * 1e12 / sharesTotal);
+      currentAccRewardsPerShare = accRewardsPerShare + (AUTOReward * 1e12 / sharesTotal);
     }
     // console.log("sharesTotal is", sharesTotal);
     // console.log("user rewardDebt is", user.rewardDebt);
     // console.log("accRewardsPerShare is", accRewardsPerShare);
-    pending = strat.balanceOf(_user) * currentAccRewardsPerShare / 1e12
-      - user.rewardDebt + user.unpaidRewards;
+    pending = strat.balanceOf(_user) * currentAccRewardsPerShare / 1e12 - user.rewardDebt + user.unpaidRewards;
   }
 
   /*
@@ -179,15 +164,11 @@ contract RewardsV4 {
         }
         */
 
-    uint256 newSharesTotal =
-      _isRemoveShares
-      ? _sharesTotal + _sharesChange
-      : _sharesTotal - _sharesChange;
+    uint256 newSharesTotal = _isRemoveShares ? _sharesTotal + _sharesChange : _sharesTotal - _sharesChange;
     UserInfo storage user = userInfo[_user];
     _update(newSharesTotal);
     if (_userShares > 0) {
-      uint256 pending = _userShares * accRewardsPerShare / 1e12
-        - user.rewardDebt + user.unpaidRewards;
+      uint256 pending = _userShares * accRewardsPerShare / 1e12 - user.rewardDebt + user.unpaidRewards;
       if (pending > 0) {
         safeRewardsTransfer(_user, pending);
       }
@@ -200,9 +181,8 @@ contract RewardsV4 {
           return;
         }
         */
-    user.rewardDebt = (
-      _isRemoveShares ? _userShares - _sharesChange : _userShares + _sharesChange
-    ) * accRewardsPerShare / 1e12;
+    user.rewardDebt =
+      (_isRemoveShares ? _userShares - _sharesChange : _userShares + _sharesChange) * accRewardsPerShare / 1e12;
   }
 
   // In case user is owed reward, and/or they have 0 shares
@@ -220,18 +200,14 @@ contract RewardsV4 {
     }
   }
 
-  function safeRewardsTransfer(address _to, uint256 _requestedAmount)
-    internal
-    returns (uint256 unpaidRewards)
-  {
+  function safeRewardsTransfer(address _to, uint256 _requestedAmount) internal returns (uint256 unpaidRewards) {
     /*
         if (!isContractsAllowed && _to.isContract() && !whitelist[_to]) {
             return _requestedAmount;
         }
         */
     uint256 amountToSend = _requestedAmount;
-    uint256 allowance =
-      rewardToken.allowance(address(treasuryAddress), address(this));
+    uint256 allowance = rewardToken.allowance(address(treasuryAddress), address(this));
     if (allowance < amountToSend) {
       amountToSend = allowance;
     }

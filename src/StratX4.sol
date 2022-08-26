@@ -50,12 +50,7 @@ abstract contract StratX4 is ERC4626, Auth {
     _;
   }
 
-  constructor(
-    address _asset,
-    address _farmContractAddress,
-    FeeConfig memory _feeConfig,
-    Authority _authority
-  )
+  constructor(address _asset, address _farmContractAddress, FeeConfig memory _feeConfig, Authority _authority)
     ERC4626(ERC20(_asset), "Autofarm Strategy", "AUTOSTRAT")
     Auth(address(0), _authority)
   {
@@ -84,9 +79,7 @@ abstract contract StratX4 is ERC4626, Auth {
     if (blocksSinceLastEarn >= _profitVestingPeriod) {
       return 0;
     }
-    return profitsVesting.mulDivUp(
-      _profitVestingPeriod - blocksSinceLastEarn, _profitVestingPeriod
-    );
+    return profitsVesting.mulDivUp(_profitVestingPeriod - blocksSinceLastEarn, _profitVestingPeriod);
   }
 
   function _lockedAssets() internal view virtual returns (uint256) {}
@@ -97,10 +90,7 @@ abstract contract StratX4 is ERC4626, Auth {
     }
   }
 
-  function beforeWithdraw(uint256 assets, uint256 /*shares*/ )
-    internal
-    override
-  {
+  function beforeWithdraw(uint256 assets, uint256 /*shares*/ ) internal override {
     if (!paused) {
       uint256 balance = asset.balanceOf(address(this));
       if (balance < assets) {
@@ -148,8 +138,7 @@ abstract contract StratX4 is ERC4626, Auth {
 
   function earn() public requiresAuth isNotPaused returns (uint256 profit) {
     address[] memory earnedAddresses = getEarnedAddresses();
-    FeeConfig memory feeConfig =
-      abi.decode(SSTORE2.read(feeConfigPointer), (FeeConfig));
+    FeeConfig memory feeConfig = abi.decode(SSTORE2.read(feeConfigPointer), (FeeConfig));
 
     _harvest();
 
@@ -192,31 +181,20 @@ abstract contract StratX4 is ERC4626, Auth {
       return;
     }
 
-    profitsVesting = (prevVestingEnd - block.number).mulDivUp(
-      profitsVesting, profitVestingPeriod
-    ) + profit;
+    profitsVesting = (prevVestingEnd - block.number).mulDivUp(profitsVesting, profitVestingPeriod) + profit;
   }
 
-  function compound(ERC20 earnedAddress, uint256 earnedAmt)
-    internal
-    virtual
-    returns (uint256 assets)
-  {}
+  function compound(ERC20 earnedAddress, uint256 earnedAmt) internal virtual returns (uint256 assets) {}
 
   function ethToWant() public view virtual returns (uint256) {}
   function rewardToWant() public view virtual returns (uint256) {}
 
-  function nextOptimalEarnBlock(uint256 _r, uint256 callCostInWei)
-    external
-    view
-    returns (uint256)
-  {
+  function nextOptimalEarnBlock(uint256 _r, uint256 callCostInWei) external view returns (uint256) {
     require(_r > 0, "Cannot earn without yield");
 
     uint256 _totalAssets = totalAssets();
     uint256 gas = callCostInWei * ethToWant() / PRECISION;
-    uint256 t0 = (gas + FixedPointMathLib.sqrt(gas * _totalAssets))
-      / (_totalAssets * _r / PRECISION);
+    uint256 t0 = (gas + FixedPointMathLib.sqrt(gas * _totalAssets)) / (_totalAssets * _r / PRECISION);
     uint256 totalAssetsIncrease = _totalAssets * _r * t0 / PRECISION - gas;
     uint256 t1 = gas / (totalAssetsIncrease * _r / PRECISION);
     return lastEarnBlock + t0 + t1;
@@ -251,11 +229,7 @@ abstract contract StratX4 is ERC4626, Auth {
   // Use cases:
   // - Refund by farm through different contract
   // - Rewards on different external rewarder contract
-  function rescueOperation(RescueCall[] calldata calls)
-    public
-    requiresAuth
-    isPaused
-  {
+  function rescueOperation(RescueCall[] calldata calls) public requiresAuth isPaused {
     require(paused, "StratX4: !paused");
 
     for (uint256 i; i < calls.length; i++) {
@@ -263,9 +237,7 @@ abstract contract StratX4 is ERC4626, Auth {
       // Calls to the asset are disallowed
       // Try to rescue the funds to this contract, and let people
       // withdraw from this contract
-      require(
-        call.target != address(asset), "StratX4: rescue cannot call asset"
-      );
+      require(call.target != address(asset), "StratX4: rescue cannot call asset");
       (bool succeeded,) = call.target.call(call.data);
       require(succeeded, "!succeeded");
     }

@@ -5,8 +5,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SSTORE2} from "solmate/utils/SSTORE2.sol";
 import {IUniswapV2Pair} from "@uniswap/v2-core/interfaces/IUniswapV2Pair.sol";
-import {IUniswapV2Router02} from
-  "@uniswap/v2-periphery/interfaces/IUniswapV2Router02.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/interfaces/IUniswapV2Router02.sol";
 
 import "./Uniswap.sol";
 import "./StratX3Lib.sol";
@@ -63,10 +62,7 @@ library StratX4LibEarn {
   using SafeTransferLib for ERC20;
   using FixedPointMathLib for uint256;
 
-  function setEarnConfig(LP1EarnConfig memory _earnConfig)
-    internal
-    returns (address earnConfigPointer)
-  {
+  function setEarnConfig(LP1EarnConfig memory _earnConfig) internal returns (address earnConfigPointer) {
     // TODO: check that swaps link to correct tokens
     earnConfigPointer = SSTORE2.write(abi.encode(_earnConfig));
   }
@@ -75,42 +71,26 @@ library StratX4LibEarn {
     return (1000 - IUniswapV2PairDynamicFee(pair).swapFee()) * 10;
   }
 
-  function compoundLP1(
-    ERC20 asset,
-    uint256 earnedAmt,
-    ERC20 earnedAddress,
-    address earnConfigPointer
-  )
+  function compoundLP1(ERC20 asset, uint256 earnedAmt, ERC20 earnedAddress, address earnConfigPointer)
     internal
     returns (uint256 assets)
   {
-    LP1EarnConfig memory earnConfig =
-      abi.decode(SSTORE2.read(earnConfigPointer), (LP1EarnConfig));
+    LP1EarnConfig memory earnConfig = abi.decode(SSTORE2.read(earnConfigPointer), (LP1EarnConfig));
 
     // Swap to base
     uint256 swapAmount = earnedAmt;
     if (earnConfig.earnedToBasePath.length > 0) {
-      ERC20(earnedAddress).safeTransfer(
-        earnConfig.earnedToBasePath[0].pair, swapAmount
-      );
+      ERC20(earnedAddress).safeTransfer(earnConfig.earnedToBasePath[0].pair, swapAmount);
 
       for (uint256 i; i < earnConfig.earnedToBasePath.length;) {
         SwapConfig memory swapConfig = earnConfig.earnedToBasePath[i];
         swapAmount = Uniswap._swap(
           swapConfig.pair,
-          swapConfig.swapFee > 0
-            ? swapConfig.swapFee
-            : _getPairSwapFee(swapConfig.pair),
-          i == 0
-            ? address(earnedAddress)
-            : earnConfig.earnedToBasePath[i - 1].tokenOut,
-          i == earnConfig.earnedToBasePath.length - 1
-            ? earnConfig.tokenBase
-            : swapConfig.tokenOut,
+          swapConfig.swapFee > 0 ? swapConfig.swapFee : _getPairSwapFee(swapConfig.pair),
+          i == 0 ? address(earnedAddress) : earnConfig.earnedToBasePath[i - 1].tokenOut,
+          i == earnConfig.earnedToBasePath.length - 1 ? earnConfig.tokenBase : swapConfig.tokenOut,
           swapAmount,
-          i == earnConfig.earnedToBasePath.length - 1
-            ? address(this)
-            : earnConfig.earnedToBasePath[i + 1].pair
+          i == earnConfig.earnedToBasePath.length - 1 ? address(this) : earnConfig.earnedToBasePath[i + 1].pair
         );
         unchecked {
           i++;
@@ -122,22 +102,14 @@ library StratX4LibEarn {
     uint256 tokenAmountOut;
     (swapAmount, tokenAmountOut) = Uniswap.calcSimpleZap(
       address(asset),
-      earnConfig.pairSwapFee > 0
-        ? earnConfig.pairSwapFee
-        : _getPairSwapFee(address(asset)),
+      earnConfig.pairSwapFee > 0 ? earnConfig.pairSwapFee : _getPairSwapFee(address(asset)),
       baseAmount,
       earnConfig.tokenBase,
       earnConfig.tokenOther
     );
 
     assets = Uniswap.oneSidedSwap(
-      address(asset),
-      swapAmount,
-      tokenAmountOut,
-      earnConfig.tokenBase,
-      earnConfig.tokenOther,
-      baseAmount,
-      address(this)
+      address(asset), swapAmount, tokenAmountOut, earnConfig.tokenBase, earnConfig.tokenOther, baseAmount, address(this)
     );
   }
 
@@ -146,20 +118,13 @@ library StratX4LibEarn {
    * <!> Used only externally, to check optimal compounding frequency.
    */
 
-  function rewardToWantLP1(ERC20 asset, address earnConfigPointer)
-    internal
-    view
-    returns (uint256)
-  {
-    LP1EarnConfig memory earnConfig =
-      abi.decode(SSTORE2.read(earnConfigPointer), (LP1EarnConfig));
+  function rewardToWantLP1(ERC20 asset, address earnConfigPointer) internal view returns (uint256) {
+    LP1EarnConfig memory earnConfig = abi.decode(SSTORE2.read(earnConfigPointer), (LP1EarnConfig));
     uint256 lpTotalSupply = asset.totalSupply();
     uint256 reserveBase;
     {
-      (uint256 reserve0, uint256 reserve1,) =
-        IUniswapV2Pair(address(asset)).getReserves();
-      reserveBase =
-        earnConfig.tokenBase < earnConfig.tokenOther ? reserve0 : reserve1;
+      (uint256 reserve0, uint256 reserve1,) = IUniswapV2Pair(address(asset)).getReserves();
+      reserveBase = earnConfig.tokenBase < earnConfig.tokenOther ? reserve0 : reserve1;
     }
     uint256 reserveBaseInReward =
       earnConfig.baseToRewardPath.length >= 2
@@ -182,31 +147,21 @@ library StratX4LibEarn {
     uint256 lpTotalSupply = asset.totalSupply();
     uint256 reserveBase;
     {
-      (uint256 reserve0, uint256 reserve1,) =
-        IUniswapV2Pair(address(asset)).getReserves();
+      (uint256 reserve0, uint256 reserve1,) = IUniswapV2Pair(address(asset)).getReserves();
       reserveBase = tokenBase < tokenOther ? reserve0 : reserve1;
     }
     uint256 reserveBaseInReward =
-      baseToRewardPath.length >= 2
-      ? oracle(oracleRouter, reserveBase, baseToRewardPath)
-      : reserveBase;
+      baseToRewardPath.length >= 2 ? oracle(oracleRouter, reserveBase, baseToRewardPath) : reserveBase;
     return lpTotalSupply * 1e18 / (reserveBaseInReward * 2);
   }
 
-  function ethToWantLP1(ERC20 asset, address earnConfigPointer)
-    internal
-    view
-    returns (uint256)
-  {
-    LP1EarnConfig memory earnConfig =
-      abi.decode(SSTORE2.read(earnConfigPointer), (LP1EarnConfig));
+  function ethToWantLP1(ERC20 asset, address earnConfigPointer) internal view returns (uint256) {
+    LP1EarnConfig memory earnConfig = abi.decode(SSTORE2.read(earnConfigPointer), (LP1EarnConfig));
     uint256 lpTotalSupply = asset.totalSupply();
     uint256 reserveBase;
     {
-      (uint256 reserve0, uint256 reserve1,) =
-        IUniswapV2Pair(address(asset)).getReserves();
-      reserveBase =
-        earnConfig.tokenBase < earnConfig.tokenOther ? reserve0 : reserve1;
+      (uint256 reserve0, uint256 reserve1,) = IUniswapV2Pair(address(asset)).getReserves();
+      reserveBase = earnConfig.tokenBase < earnConfig.tokenOther ? reserve0 : reserve1;
     }
     uint256 reserveBaseInEth =
       earnConfig.baseToEthPath.length >= 2
@@ -230,25 +185,17 @@ library StratX4LibEarn {
     uint256 lpTotalSupply = asset.totalSupply();
     uint256 reserveBase;
     {
-      (uint256 reserve0, uint256 reserve1,) =
-        IUniswapV2Pair(address(asset)).getReserves();
+      (uint256 reserve0, uint256 reserve1,) = IUniswapV2Pair(address(asset)).getReserves();
       reserveBase = tokenBase < tokenOther ? reserve0 : reserve1;
     }
     uint256 reserveBaseInEth =
-      baseToEthPath.length >= 2
-      ? oracle(oracleRouter, reserveBase, baseToEthPath)
-      : reserveBase;
+      baseToEthPath.length >= 2 ? oracle(oracleRouter, reserveBase, baseToEthPath) : reserveBase;
 
     return lpTotalSupply * 1e18 / (reserveBaseInEth * 2);
   }
 
-  function oracle(address router, uint256 amountIn, address[] memory path)
-    internal
-    view
-    returns (uint256 amountOut)
-  {
-    uint256[] memory amounts =
-      IUniswapV2Router02(router).getAmountsOut(amountIn, path);
+  function oracle(address router, uint256 amountIn, address[] memory path) internal view returns (uint256 amountOut) {
+    uint256[] memory amounts = IUniswapV2Router02(router).getAmountsOut(amountIn, path);
     amountOut = amounts[amounts.length - 1];
   }
 }

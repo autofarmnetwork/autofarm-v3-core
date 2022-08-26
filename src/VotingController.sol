@@ -23,16 +23,9 @@ contract AUTORevenueVoteController {
   uint256 public constant NUM_OPTIONS = 3;
   uint8[NUM_OPTIONS] public burnRates = [0, 128, 204];
 
-  event Vote(
-    address indexed voter, uint256 indexed term, uint256 indexed option
-  );
+  event Vote(address indexed voter, uint256 indexed term, uint256 indexed option);
 
-  constructor(
-    address _feesController,
-    address _SAV,
-    uint256 _savPID,
-    address _autofarm
-  ) {
+  constructor(address _feesController, address _SAV, uint256 _savPID, address _autofarm) {
     feesController = AutofarmFeesController(_feesController);
     SAV = _SAV;
     savPID = _savPID;
@@ -59,18 +52,13 @@ contract AUTORevenueVoteController {
     require(!isNowVotingPeriod());
     uint256 currentTerm = getCurrentTerm();
 
-    (uint256 winningOption, uint256 highestVote) =
-      getTermVotingResult(currentTerm);
+    (uint256 winningOption, uint256 highestVote) = getTermVotingResult(currentTerm);
     require(highestVote > 0);
 
     feesController.setPortionsByVote(burnRates[winningOption]);
   }
 
-  function getTermVotingResult(uint256 _term)
-    internal
-    view
-    returns (uint256 winningOption, uint256 highestVote)
-  {
+  function getTermVotingResult(uint256 _term) internal view returns (uint256 winningOption, uint256 highestVote) {
     for (uint256 i; i < NUM_OPTIONS; i++) {
       uint256 optionVotes = votes[_term][i];
       // When there's a tie, the order of the option is used

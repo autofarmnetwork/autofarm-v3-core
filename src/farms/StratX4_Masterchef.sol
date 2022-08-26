@@ -43,9 +43,8 @@ abstract contract StratX4_Masterchef is StratX4 {
   }
 
   function pendingRewards() public view override returns (uint256) {
-    (bool success, bytes memory data) = farmContractAddress.staticcall(
-      abi.encodeWithSelector(pendingRewardsSelector, pid, address(this))
-    );
+    (bool success, bytes memory data) =
+      farmContractAddress.staticcall(abi.encodeWithSelector(pendingRewardsSelector, pid, address(this)));
     require(success, "StratX4_Masterchef: pendingRewards failed");
     return abi.decode(data, (uint256));
   }

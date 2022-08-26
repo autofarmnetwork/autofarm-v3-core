@@ -14,10 +14,7 @@ interface IMasterchefV2 {
 
   function leaveStaking(uint256 _amount) external;
 
-  function userInfo(uint256 pid, address userAddress)
-    external
-    view
-    returns (UserInfo memory);
+  function userInfo(uint256 pid, address userAddress) external view returns (UserInfo memory);
 
   function emergencyWithdraw(uint256 _pid) external;
 }

@@ -7,8 +7,7 @@ import "forge-std/console2.sol";
 
 import {Roles, Configurer, keeper, deployer} from "../src/auth/Auth.sol";
 import "solmate/tokens/ERC20.sol";
-import {MultiRolesAuthority} from
-  "solmate/auth/authorities/MultiRolesAuthority.sol";
+import {MultiRolesAuthority} from "solmate/auth/authorities/MultiRolesAuthority.sol";
 import {FeeConfig} from "../src/StratX4.sol";
 import {SwapConfig, LP1EarnConfig} from "../src/libraries/StratX4LibEarn.sol";
 import {StratX4} from "../src/StratX4.sol";
@@ -52,10 +51,9 @@ abstract contract StratX4TestBase is Test {
   MultiRolesAuthority auth;
   address feesController;
   StratX4 public strat;
-  uint256 public forkId;
 
-  constructor(string memory RPC_URL) {
-    forkId = vm.createSelectFork(RPC_URL);
+  constructor(string memory chain, uint256 blockNumber) {
+    vm.createSelectFork(vm.rpcUrl(chain), blockNumber);
     feesController = vm.addr(RANDOM_SEED_1);
     auth = Configurer.createAuthority();
     auth.setUserRole(keeper, uint8(Roles.Keeper), true);
@@ -152,25 +150,16 @@ abstract contract StratX4EarnTest is StratX4TestBase {
     vm.roll(block.number + aprDetectionBlocks);
     uint256 testHarvest = strat.pendingRewards() * strat.rewardToWant();
     interestPerBlock = testHarvest / tvl / aprDetectionBlocks;
-    console2.log(
-      "detected APR per block",
-      interestPerBlock,
-      interestPerBlock * 60 * 60 * 24 * 365 / 3 / 1e14
-    );
+    console2.log("detected APR per block", interestPerBlock, interestPerBlock * 60 * 60 * 24 * 365 / 3 / 1e14);
 
-    uint256 nextEarnBlock =
-      strat.nextOptimalEarnBlock(interestPerBlock, earnTxCost);
+    uint256 nextEarnBlock = strat.nextOptimalEarnBlock(interestPerBlock, earnTxCost);
     blocksBetweenCompounds = nextEarnBlock - block.number;
     vm.roll(nextEarnBlock);
     pendingRewards = strat.pendingRewards();
     assertGt(pendingRewards, 0);
     expectedHarvest = pendingRewards * strat.rewardToWant() / 1e18;
 
-    console2.log(
-      "blocks between earns",
-      blocksBetweenCompounds,
-      blocksBetweenCompounds * 3 / 60 / 60 / 24
-    );
+    console2.log("blocks between earns", blocksBetweenCompounds, blocksBetweenCompounds * 3 / 60 / 60 / 24);
     console2.log("pendingRewards", strat.pendingRewards());
     console2.log("expected harvest", expectedHarvest);
   }
@@ -179,42 +168,25 @@ abstract contract StratX4EarnTest is StratX4TestBase {
     vm.prank(keeper);
     uint256 compoundedAssets = strat.earn();
     console2.log(compoundedAssets);
-    assertGe(
-      compoundedAssets,
-      expectedHarvest * 920 / 1000,
-      "earn harvests less than expected harvest"
-    );
+    assertGe(compoundedAssets, expectedHarvest * 920 / 1000, "earn harvests less than expected harvest");
   }
 
   function testFeesDepositedIntoController() public {
     vm.prank(keeper);
     strat.earn();
     ERC20 rewardToken = ERC20(strat.getEarnedAddress(0));
-    assertGe(
-      rewardToken.balanceOf(address(feesController)),
-      pendingRewards * FEE_RATE / 1e18
-    );
+    assertGe(rewardToken.balanceOf(address(feesController)), pendingRewards * FEE_RATE / 1e18);
   }
 
   function testHarvestVesting() public {
     uint256 totalAssetsBeforeEarn = strat.totalAssets();
     vm.prank(keeper);
     uint256 compoundedAssets = strat.earn();
-    assertEq(
-      strat.profitsVesting(),
-      compoundedAssets,
-      "vesting harvest less than compounded amount"
-    );
-    assertEq(
-      strat.totalAssets(),
-      totalAssetsBeforeEarn,
-      "totalAssets should not change right after earn"
-    );
+    assertEq(strat.profitsVesting(), compoundedAssets, "vesting harvest less than compounded amount");
+    assertEq(strat.totalAssets(), totalAssetsBeforeEarn, "totalAssets should not change right after earn");
     vm.roll(block.number + strat.profitVestingPeriod());
     assertEq(
-      strat.totalAssets(),
-      strat.profitsVesting() + totalAssetsBeforeEarn,
-      "harvests did not vest within vesting period"
+      strat.totalAssets(), strat.profitsVesting() + totalAssetsBeforeEarn, "harvests did not vest within vesting period"
     );
   }
 
@@ -222,11 +194,7 @@ abstract contract StratX4EarnTest is StratX4TestBase {
     vm.prank(keeper);
     uint256 compoundedAssets = strat.earn();
     console2.log(compoundedAssets);
-    assertGe(
-      compoundedAssets,
-      expectedHarvest * 920 / 1000,
-      "earn harvests less than expected harvest"
-    );
+    assertGe(compoundedAssets, expectedHarvest * 920 / 1000, "earn harvests less than expected harvest");
   }
 
   function testEarnByUnauthorizedRevert() public {

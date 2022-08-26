@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {
-  MultiRolesAuthority,
-  Authority
-} from "solmate/auth/authorities/MultiRolesAuthority.sol";
+import {MultiRolesAuthority, Authority} from "solmate/auth/authorities/MultiRolesAuthority.sol";
 
 import {StratX4} from "../StratX4.sol";
 import {AutofarmFeesController} from "../FeesController.sol";
@@ -30,32 +27,18 @@ library Configurer {
 
   function setupRoleCapacities(MultiRolesAuthority _authority) internal {
     // Keeper
-    _authority.setRoleCapability(
-      uint8(Roles.Keeper), StratX4.earn.selector, true
-    );
-    _authority.setRoleCapability(
-      uint8(Roles.Keeper), StratX4.setFeeConfig.selector, true
-    );
-    _authority.setRoleCapability(
-      uint8(Roles.Keeper), AutofarmFeesController.forwardFees.selector, true
-    );
+    _authority.setRoleCapability(uint8(Roles.Keeper), StratX4.earn.selector, true);
+    _authority.setRoleCapability(uint8(Roles.Keeper), StratX4.setFeeConfig.selector, true);
+    _authority.setRoleCapability(uint8(Roles.Keeper), AutofarmFeesController.forwardFees.selector, true);
 
     // Guardian
-    _authority.setRoleCapability(
-      uint8(Roles.Guardian), StratX4.pause.selector, true
-    );
+    _authority.setRoleCapability(uint8(Roles.Guardian), StratX4.pause.selector, true);
 
     // Dev
-    _authority.setRoleCapability(
-      uint8(Roles.Dev), StratX4.unpause.selector, true
-    );
-    _authority.setRoleCapability(
-      uint8(Roles.Dev), StratX4.rescueOperation.selector, true
-    );
+    _authority.setRoleCapability(uint8(Roles.Dev), StratX4.unpause.selector, true);
+    _authority.setRoleCapability(uint8(Roles.Dev), StratX4.rescueOperation.selector, true);
 
     // Gov
-    _authority.setRoleCapability(
-      uint8(Roles.Gov), AutofarmFeesController.setRewardCfg.selector, true
-    );
+    _authority.setRoleCapability(uint8(Roles.Gov), AutofarmFeesController.setRewardCfg.selector, true);
   }
 }

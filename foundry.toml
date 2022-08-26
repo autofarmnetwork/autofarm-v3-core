@@ -2,9 +2,13 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
-
-# See more config options https://github.com/foundry-rs/foundry/tree/master/config
+solc_version = '0.8.13'
 
 [fmt]
 tab_width = 2
 
+[rpc_endpoints]
+bsc = "${BSC_RPC_URL}"
+
+[etherscan]
+bsc = { key = "${BSC_ETHERSCAN_KEY}", chain = 56, url = "https://api.bscscan.com/api" }
