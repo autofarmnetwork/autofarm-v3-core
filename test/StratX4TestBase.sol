@@ -56,11 +56,8 @@ abstract contract StratX4TestBase is Test {
   constructor(string memory chain, uint256 blockNumber) {
     vm.createSelectFork(vm.rpcUrl(chain), blockNumber);
     feesController = vm.addr(RANDOM_SEED_1);
-	  defaultFeeConfig = FeeConfig({
-     feeRate: FEE_RATE,
-     feesController: feesController
-	  });
-    auth = Configurer.createAuthority();
+    defaultFeeConfig = FeeConfig({feeRate: FEE_RATE, feesController: feesController});
+    auth = Configurer.createAuthority(address(this));
     auth.setUserRole(keeper, uint8(Roles.Keeper), true);
     auth.setUserRole(deployer, uint8(Roles.Guardian), true);
     auth.setUserRole(deployer, uint8(Roles.Dev), true);

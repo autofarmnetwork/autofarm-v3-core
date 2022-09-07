@@ -5,6 +5,7 @@ import {MultiRolesAuthority, Authority} from "solmate/auth/authorities/MultiRole
 
 import {StratX4} from "../StratX4.sol";
 import {AutofarmFeesController} from "../FeesController.sol";
+import {AutofarmDeployer} from "../Deployer.sol";
 import "forge-std/console2.sol";
 
 address constant deployer = 0xF482404f0Ee4bbC780199b2995A43882a8595adA;
@@ -19,10 +20,12 @@ enum Roles {
 }
 
 library Configurer {
-  function createAuthority() internal returns (MultiRolesAuthority authority) {
+  function createAuthority(address _owner) internal returns (MultiRolesAuthority authority) {
     authority = new MultiRolesAuthority(address(this), Authority(address(0)));
-    authority.setAuthority(authority);
     setupRoleCapacities(authority);
+    if (_owner != address(this)) {
+      authority.setOwner(_owner);
+    }
   }
 
   function setupRoleCapacities(MultiRolesAuthority _authority) internal {
@@ -37,8 +40,10 @@ library Configurer {
     // Dev
     _authority.setRoleCapability(uint8(Roles.Dev), StratX4.unpause.selector, true);
     _authority.setRoleCapability(uint8(Roles.Dev), StratX4.rescueOperation.selector, true);
+    _authority.setRoleCapability(uint8(Roles.Dev), AutofarmDeployer.deployStrat.selector, true);
 
     // Gov
     _authority.setRoleCapability(uint8(Roles.Gov), AutofarmFeesController.setRewardCfg.selector, true);
+    _authority.setRoleCapability(uint8(Roles.Gov), AutofarmDeployer.setUserRole.selector, true);
   }
 }

@@ -3,11 +3,7 @@ pragma solidity ^0.8.13;
 
 import {StratX4TestBase, StratX4UserTest, StratX4EarnTest} from "../StratX4TestBase.sol";
 
-import {
-	Strat,
-	CHAIN,
-	TEST_BLOCK
-} from "../../src/implementations/stkBNB.sol";
+import {Strat, CHAIN, TEST_BLOCK} from "../../src/implementations/stkBNB.sol";
 
 abstract contract TestBase is StratX4TestBase {
   constructor() StratX4TestBase(CHAIN, TEST_BLOCK) {
@@ -16,4 +12,5 @@ abstract contract TestBase is StratX4TestBase {
 }
 
 contract UserTest is StratX4UserTest, TestBase {}
+
 contract EarnTest is StratX4EarnTest, TestBase {}

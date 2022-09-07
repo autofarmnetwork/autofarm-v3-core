@@ -8,10 +8,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SSTORE2} from "solmate/utils/SSTORE2.sol";
 
 import {Uniswap} from "./libraries/Uniswap.sol";
-
-interface Burnable {
-  function burn(uint256) external;
-}
+import {SingleAUTOVault} from "./SAV.sol";
 
 contract AutofarmFeesController is Auth {
   using SafeTransferLib for ERC20;
@@ -42,15 +39,15 @@ contract AutofarmFeesController is Auth {
   constructor(
     Authority _authority,
     address _treasury,
-    address _SAV,
     address _votingController,
     uint8 _portionToPlatform,
     uint8 _portionToAUTOBurn
   )
-    Auth(address(0), _authority)
+    Auth(msg.sender, _authority)
   {
     treasury = _treasury;
-    SAV = _SAV;
+    SingleAUTOVault sav = new SingleAUTOVault(address(this));
+    SAV = address(sav);
     votingController = _votingController;
     portionToPlatform = _portionToPlatform;
     portionToAUTOBurn = _portionToAUTOBurn;
@@ -106,6 +103,8 @@ contract AutofarmFeesController is Auth {
     ERC20(AUTOv2).safeTransfer(address(0), burnAmt);
     earnedAmt -= burnAmt;
     ERC20(AUTOv2).safeTransfer(SAV, earnedAmt);
+
+    SingleAUTOVault(SAV).setProfitsVesting(earnedAmt);
 
     emit FeeDistribution(address(earnedAddress), feeToPlatform, burnAmt, earnedAmt);
   }
