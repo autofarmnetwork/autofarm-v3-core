@@ -6,7 +6,6 @@ import "forge-std/Vm.sol";
 import "../src/VenusDistribution.sol";
 
 contract VenusDistributionDeploymentScript is Script {
-  Vm public constant vmUnsafe = Vm(VM_ADDRESS);
 
   function run() external {
     address[] memory assets = new address[](10);
@@ -21,7 +20,7 @@ contract VenusDistributionDeploymentScript is Script {
     assets[8] = 0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47;
     assets[9] = 0xa184088a740c695E156F91f5cC086a06bb78b827;
 
-    vmUnsafe.startBroadcast();
+    vm.startBroadcast();
 
     AutofarmVenusDistributor distributor = new AutofarmVenusDistributor(
    	hex'06ee3bc42bc60fdd242b1c681b7c2a67175b5684b90e24a56dec8a36832bbcb8',
