@@ -16,6 +16,7 @@ jobs:
 
     name: Foundry project
     runs-on: ubuntu-latest
+    environment: test
     steps:
       - uses: actions/checkout@v3
         with:
@@ -26,13 +27,12 @@ jobs:
         with:
           version: nightly
 
-      - name: Run Forge build
+      - name: Run Forge
         run: |
           forge --version
           forge build --sizes
-        id: build
-
-      - name: Run Forge tests
-        run: |
           forge test -vvv
-        id: test
+        id: build-test
+        env:
+          BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
+
