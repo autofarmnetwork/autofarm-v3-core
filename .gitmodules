@@ -14,3 +14,6 @@
 [submodule "lib/v2-periphery"]
 	path = lib/v2-periphery
 	url = https://github.com/Uniswap/v2-periphery
+[submodule "lib/sstore2"]
+	path = lib/sstore2
+	url = https://github.com/0xsequence/sstore2
