@@ -19,7 +19,7 @@ contract AutofarmFeesController is Auth {
   address public SAV;
   address public votingController;
   uint8 public portionToPlatform;
-  // portion to remainding fees after platform fees
+  // portion to remaining fees after platform fees
   uint8 public portionToAUTOBurn;
   mapping(address => address) public rewardCfgPointers;
 
@@ -42,12 +42,8 @@ contract AutofarmFeesController is Auth {
     address _votingController,
     uint8 _portionToPlatform,
     uint8 _portionToAUTOBurn
-  )
-    Auth(msg.sender, _authority)
-  {
+  ) Auth(address(0), _authority) {
     treasury = _treasury;
-    SingleAUTOVault sav = new SingleAUTOVault(address(this));
-    SAV = address(sav);
     votingController = _votingController;
     portionToPlatform = _portionToPlatform;
     portionToAUTOBurn = _portionToAUTOBurn;

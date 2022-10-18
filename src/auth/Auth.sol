@@ -20,30 +20,28 @@ enum Roles {
 }
 
 library Configurer {
-  function createAuthority(address _owner) internal returns (MultiRolesAuthority authority) {
-    authority = new MultiRolesAuthority(address(this), Authority(address(0)));
+  function createAuthority() internal returns (MultiRolesAuthority authority) {
+    authority = new MultiRolesAuthority(msg.sender, Authority(address(0)));
     setupRoleCapacities(authority);
-    if (_owner != address(this)) {
-      authority.setOwner(_owner);
-    }
   }
 
   function setupRoleCapacities(MultiRolesAuthority _authority) internal {
     // Keeper
     _authority.setRoleCapability(uint8(Roles.Keeper), StratX4.earn.selector, true);
-    _authority.setRoleCapability(uint8(Roles.Keeper), StratX4.setFeeConfig.selector, true);
+    _authority.setRoleCapability(uint8(Roles.Keeper), StratX4.setFeeRate.selector, true);
     _authority.setRoleCapability(uint8(Roles.Keeper), AutofarmFeesController.forwardFees.selector, true);
 
     // Guardian
-    _authority.setRoleCapability(uint8(Roles.Guardian), StratX4.pause.selector, true);
+    _authority.setRoleCapability(uint8(Roles.Guardian), StratX4.deprecate.selector, true);
 
     // Dev
-    _authority.setRoleCapability(uint8(Roles.Dev), StratX4.unpause.selector, true);
+    _authority.setRoleCapability(uint8(Roles.Dev), StratX4.undeprecate.selector, true);
     _authority.setRoleCapability(uint8(Roles.Dev), StratX4.rescueOperation.selector, true);
     _authority.setRoleCapability(uint8(Roles.Dev), AutofarmDeployer.deployStrat.selector, true);
 
     // Gov
+    _authority.setRoleCapability(uint8(Roles.Gov), AutofarmFeesController.setTreasury.selector, true);
+    _authority.setRoleCapability(uint8(Roles.Gov), AutofarmFeesController.setSAV.selector, true);
     _authority.setRoleCapability(uint8(Roles.Gov), AutofarmFeesController.setRewardCfg.selector, true);
-    _authority.setRoleCapability(uint8(Roles.Gov), AutofarmDeployer.setUserRole.selector, true);
   }
 }

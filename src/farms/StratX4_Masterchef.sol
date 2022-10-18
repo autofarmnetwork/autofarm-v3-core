@@ -7,7 +7,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {IMasterchefV2} from "../interfaces/IMasterchefV2.sol";
-import {StratX4, FeeConfig} from "../StratX4.sol";
+import {StratX4} from "../StratX4.sol";
 
 /*
  * Farm Requirements
@@ -26,12 +26,11 @@ abstract contract StratX4_Masterchef is StratX4 {
     address _asset,
     address _farmContractAddress,
     uint256 _pid,
+    address _feesController,
+    uint256 _feeRate,
     bytes4 _pendingRewardsSelector,
-    FeeConfig memory _feeConfig,
     Authority _authority
-  )
-    StratX4(_asset, _farmContractAddress, _feeConfig, _authority)
-  {
+  ) StratX4(_asset, _farmContractAddress, _feesController, _feeRate, _authority) {
     pid = _pid;
     pendingRewardsSelector = _pendingRewardsSelector;
   }
@@ -59,7 +58,7 @@ abstract contract StratX4_Masterchef is StratX4 {
     IMasterchefV2(farmContractAddress).withdraw(pid, wantAmt);
   }
 
-  function _harvest() internal virtual override {
+  function _harvest() internal virtual {
     IMasterchefV2(farmContractAddress).withdraw(pid, 0);
   }
 

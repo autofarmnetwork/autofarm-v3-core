@@ -3,95 +3,104 @@ pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SSTORE2} from "solmate/utils/SSTORE2.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {Auth, Authority} from "solmate/auth/authorities/RolesAuthority.sol";
+import {Pausable} from "openzeppelin/security/Pausable.sol";
+import {FlippedUint256, FlippedUint256Lib} from "./libraries/FlippedUint.sol";
 
-import "./libraries/StratX3Lib.sol";
+error NothingEarnedAfterFees(address earnedAddress, uint256 earnedAmount, uint256 feeCollectable);
 
-struct FeeConfig {
-  uint256 feeRate;
-  address feesController;
-}
-
-uint256 constant SIX_HOURS = 21600; // in blocks
-
-abstract contract StratX4 is ERC4626, Auth {
+abstract contract StratX4 is ERC4626, Auth, Pausable {
   using SafeTransferLib for ERC20;
   using FixedPointMathLib for uint256;
+  using FixedPointMathLib for uint160;
 
-  uint256 constant PRECISION = 1e18;
+  uint256 public constant FEE_RATE_PRECISION = 1e18;
 
-  bool public paused;
   address public immutable farmContractAddress;
-  address public feeConfigPointer; // SSTORE2 pointer
-  uint256 public lastEarnBlock = block.number;
-  uint256 public profitsVesting;
-  uint256 public profitVestingPeriod = SIX_HOURS;
-  address[] public rewarders;
+  address public immutable feesController;
+  uint96 public immutable creationBlock;
+  mapping(address => FlippedUint256) public feesCollectable;
+  uint256 public constant MAX_FEE_RATE = 1e17; // 10%
+  uint256 public constant PROFIT_VESTING_PERIOD = 21600; // 6 hours
+
+  uint256 public feeRate;
+  ProfitVesting public profitVesting;
+
+  event FeeSetAside(address earnedAddress, uint256 amount);
+  event FeeCollected(address indexed earnedAddress, uint256 amount);
+  event FeesUpdated(uint256 feeRate);
+  event Earn(address indexed earnedAddress, uint256 assetsIncrease, uint256 earnedAmount, uint256 fee);
+  event FarmAllowanceReset();
+
+  struct ProfitVesting {
+    // 96 bits should be enough for > 2500 years of operation,
+    // if block time is 1 second
+    uint96 lastEarnBlock;
+    uint160 amount;
+  }
 
   struct RescueCall {
     address target;
     bytes data;
   }
 
-  event FeesUpdated(uint256 feeRate, address rewardsAddress);
+  constructor(
+    address _asset,
+    address _farmContractAddress,
+    address _feesController,
+    uint256 _feeRate,
+    Authority _authority
+  ) ERC4626(ERC20(_asset), "Autofarm Strategy", "AF-Strat") Auth(address(0), _authority) {
+    require(_feeRate <= MAX_FEE_RATE, "StratX4: feeRate exceeds limit");
 
-  event Earn(uint256 assetsIncrease);
-
-  modifier isNotPaused() {
-    require(!paused, "StratX4: Paused");
-    _;
-  }
-
-  modifier isPaused() {
-    require(paused, "StratX4: Must be paused");
-    _;
-  }
-
-  constructor(address _asset, address _farmContractAddress, FeeConfig memory _feeConfig, Authority _authority)
-    ERC4626(ERC20(_asset), "Autofarm Strategy", "AUTOSTRAT")
-    Auth(address(0), _authority)
-  {
     farmContractAddress = _farmContractAddress;
-    feeConfigPointer = SSTORE2.write(abi.encode(_feeConfig));
+    feesController = _feesController;
+    feeRate = _feeRate;
+
     ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
+    uint96 _creationBlock = uint96(block.number);
+    profitVesting = ProfitVesting({lastEarnBlock: _creationBlock, amount: 0});
+    creationBlock = _creationBlock;
   }
 
-  /**
-   * ERC4626 compatibility ***
-   */
+  ///// ERC4626 compatibility /////
 
   // totalAssets is adjusted to vest earned profits over a vesting period
   // to prevent front-running and remove the need for an entrance fee
   function totalAssets() public view override returns (uint256) {
-    if (paused) {
+    if (paused()) {
       return asset.balanceOf(address(this));
     }
 
-    return _lockedAssets() + asset.balanceOf(address(this)) - lockedProfit();
-  }
-
-  function lockedProfit() public view returns (uint256) {
-    uint256 blocksSinceLastEarn = block.number - lastEarnBlock;
-    uint256 _profitVestingPeriod = profitVestingPeriod;
-    if (blocksSinceLastEarn >= _profitVestingPeriod) {
+    uint256 _vestingProfit = vestingProfit();
+    uint256 amount = _lockedAssets() + asset.balanceOf(address(this));
+    if (_vestingProfit > amount) {
       return 0;
     }
-    return profitsVesting.mulDivUp(_profitVestingPeriod - blocksSinceLastEarn, _profitVestingPeriod);
+
+    return amount - _vestingProfit;
   }
 
-  function _lockedAssets() internal view virtual returns (uint256) {}
+  function vestingProfit() public view returns (uint256) {
+    uint256 blocksSinceLastEarn = block.number - profitVesting.lastEarnBlock;
+    if (blocksSinceLastEarn >= PROFIT_VESTING_PERIOD) {
+      return 0;
+    }
+    return profitVesting.amount.mulDivUp(PROFIT_VESTING_PERIOD - blocksSinceLastEarn, PROFIT_VESTING_PERIOD);
+  }
+
+  function _lockedAssets() internal view virtual returns (uint256);
 
   function afterDeposit(uint256 assets, uint256 /*shares*/ ) internal override {
-    if (!paused) {
+    if (!paused()) {
       _farm(assets);
     }
   }
 
   function beforeWithdraw(uint256 assets, uint256 /*shares*/ ) internal override {
-    if (!paused) {
+    if (!paused()) {
       uint256 balance = asset.balanceOf(address(this));
       if (balance < assets) {
         _unfarm(assets - balance);
@@ -99,139 +108,122 @@ abstract contract StratX4 is ERC4626, Auth {
     }
   }
 
-  function _mint(address from, uint256 amount) internal override {
-    address[] memory _rewarders = rewarders;
-    if (_rewarders.length > 0) {
-      StratX3Lib._harvestReward(rewarders, from, amount, false);
-    }
-    super._mint(from, amount);
+  ///// FARM INTERACTION /////
+
+  function _farm(uint256 wantAmt) internal virtual;
+  function _unfarm(uint256 wantAmt) internal virtual;
+  function _emergencyUnfarm() internal virtual;
+  function pendingRewards() public view virtual returns (uint256);
+
+  function resetFarmAllowance() public requiresAuth whenNotPaused {
+    ERC20(asset).safeApprove(farmContractAddress, type(uint256).max);
+    emit FarmAllowanceReset();
   }
 
-  function _burn(address from, uint256 amount) internal override {
-    address[] memory _rewarders = rewarders;
-    if (_rewarders.length > 0) {
-      StratX3Lib._harvestReward(_rewarders, from, amount, true);
-    }
-    super._burn(from, amount);
-  }
+  ///// Compounding /////
 
-  function _farm(uint256 wantAmt) internal virtual {}
-  function _unfarm(uint256 wantAmt) internal virtual {}
-  function _harvest() internal virtual {}
-  function _emergencyUnfarm() internal virtual {}
-  function pendingRewards() public view virtual returns (uint256) {}
-
-  function pendingUserRewards(address user) public view returns (uint256) {
-    return pendingRewards() * balanceOf[user] / totalSupply;
-  }
-
-  /**
-   * Compounding ***
-   */
-  function getEarnedAddresses() public pure virtual returns (address[] memory) {}
-
-  function getEarnedAddress(uint256 index) public pure returns (address) {
-    address[] memory earnedAddresses = getEarnedAddresses();
-    require(index < earnedAddresses.length);
-    return earnedAddresses[index];
-  }
-
-  function earn() public requiresAuth isNotPaused returns (uint256 profit) {
-    address[] memory earnedAddresses = getEarnedAddresses();
-    FeeConfig memory feeConfig = abi.decode(SSTORE2.read(feeConfigPointer), (FeeConfig));
-
-    _harvest();
-
-    for (uint256 i; i < earnedAddresses.length;) {
-      ERC20 earnedAddress = ERC20(earnedAddresses[i]);
-      uint256 earnedAmt = earnedAddress.balanceOf(address(this));
-      require(earnedAmt > 0, "StratX4: No harvest");
-
-      // Handle Fees
-      if (feeConfig.feeRate > 0 && feeConfig.feesController != address(0)) {
-        uint256 fee = earnedAmt.mulDivUp(feeConfig.feeRate, PRECISION);
-        require(fee > 0, "StratX4: No fees");
-        earnedAmt -= fee;
-        require(earnedAmt > 0, "StratX4: No harvest after fees");
-        earnedAddress.safeTransfer(feeConfig.feesController, fee);
-      }
-
-      profit += compound(earnedAddress, earnedAmt);
-      unchecked {
-        i++;
-      }
-    }
-
+  function earn(address earnedAddress) public requiresAuth whenNotPaused returns (uint256 profit) {
+    harvest(earnedAddress);
+    (uint256 earnedAmount, uint256 fee) = getEarnedAmountAfterFee(earnedAddress);
+    profit = compound(earnedAddress, earnedAmount);
+    require(profit > 0, "StratX4: Earn produces no profit");
     _farm(profit);
-
-    _setProfitsVesting(profit);
-    lastEarnBlock = block.number;
-
-    emit Earn(profit);
+    _vestProfit(profit);
+    emit Earn(earnedAddress, profit, earnedAmount, fee);
   }
 
-  // Increase vesting profits
-  // Takes into account the previous unvested profits, if any
-  // c.f. https://github.com/luiz-lvj/eth-amsterdam/blob/ff3a18581d73941fe520120fe2b239cf738b2b29/contracts/LeibnizVault.sol#L58
-  function _setProfitsVesting(uint256 profit) internal {
-    uint256 prevVestingEnd = lastEarnBlock + profitVestingPeriod;
+  function harvest(address earnedAddress) internal virtual;
+  function compound(address earnedAddress, uint256 earnedAmount) internal virtual returns (uint256);
 
-    if (block.number >= prevVestingEnd) {
-      profitsVesting = profit;
-      return;
+  function getEarnedAmountAfterFee(address earnedAddress) internal returns (uint256 earnedAmount, uint256 fee) {
+    uint256 _feeRate = feeRate; // Reduce SLOADs
+
+    uint256 _feeCollectable = feesCollectable[earnedAddress].get();
+
+    // When earnedAddress == asset, and when the asset is somehow staked in this Strat instead of the farm
+    // this might reflect the wrong amount.
+    // Normally that would only happen in a paused strat,
+    // but it is possible for the farm to "push" the assets back to the Strat.
+    earnedAmount = ERC20(earnedAddress).balanceOf(address(this)) - _feeCollectable;
+
+    if (_feeRate > 0) {
+      fee = earnedAmount.mulDivUp(_feeRate, FEE_RATE_PRECISION);
+      earnedAmount -= fee;
+
+      if (earnedAmount <= fee) {
+        revert NothingEarnedAfterFees(earnedAddress, earnedAmount, _feeCollectable);
+      }
+      feesCollectable[earnedAddress] = FlippedUint256Lib.create(_feeCollectable + fee);
+
+      emit FeeSetAside(earnedAddress, fee);
     }
-
-    profitsVesting = (prevVestingEnd - block.number).mulDivUp(profitsVesting, profitVestingPeriod) + profit;
   }
 
-  function compound(ERC20 earnedAddress, uint256 earnedAmt) internal virtual returns (uint256 assets) {}
-
-  function ethToWant() public view virtual returns (uint256) {}
-  function rewardToWant() public view virtual returns (uint256) {}
-
-  function nextOptimalEarnBlock(uint256 _r, uint256 callCostInWei) external view returns (uint256) {
-    require(_r > 0, "Cannot earn without yield");
-
-    uint256 _totalAssets = totalAssets();
-    uint256 gas = callCostInWei * ethToWant() / PRECISION;
-    uint256 t0 = (gas + FixedPointMathLib.sqrt(gas * _totalAssets)) / (_totalAssets * _r / PRECISION);
-    uint256 totalAssetsIncrease = _totalAssets * _r * t0 / PRECISION - gas;
-    uint256 t1 = gas / (totalAssetsIncrease * _r / PRECISION);
-    return lastEarnBlock + t0 + t1;
+  function minEarnedAmountToHarvest() public view returns (uint256) {
+    return FEE_RATE_PRECISION / feeRate;
   }
+
+  /* @earnbot
+   * Called in batches to decouple fees and compounding.
+   * Should calc gas vs fees to decide when it is economical to collect fees
+   */
+  function collectFees(address earnedAddress) public whenNotPaused requiresAuth {
+    uint256 amount = feesCollectable[earnedAddress].get();
+    ERC20(earnedAddress).safeTransfer(feesController, amount);
+    feesCollectable[earnedAddress] = FlippedUint256Lib.create(0);
+    emit FeeCollected(earnedAddress, amount);
+  }
+
+  function collectableFee(address earnedAddress) public view returns (uint256 amount) {
+    amount = feesCollectable[earnedAddress].get();
+  }
+
+  function _vestProfit(uint256 profit) internal {
+    uint96 lastEarnBlock = profitVesting.lastEarnBlock;
+    uint256 prevVestingEnd = lastEarnBlock + PROFIT_VESTING_PERIOD;
+
+    uint256 vestingAmount = uint160(profit);
+
+    // Carry over unvested profits
+    if (block.number < prevVestingEnd && block.number != creationBlock) {
+      vestingAmount += profitVesting.amount.mulDivUp(prevVestingEnd - block.number, PROFIT_VESTING_PERIOD);
+    }
+    profitVesting.lastEarnBlock = uint96(block.number);
+    profitVesting.amount = uint160(vestingAmount);
+  }
+
+  ///// KEEPER FUNCTIONALITIES /////
 
   /*
-   * ADMIN
+   * Sets the feeRate.
+   * The Keeper adjusts the feeRate periodically according to the vault's APR.
    */
+  function setFeeRate(uint256 _feeRate) public requiresAuth {
+    require(_feeRate <= MAX_FEE_RATE, "StratX4: feeRate exceeds limit");
 
-  function setFeeConfig(FeeConfig calldata _feeConfig) public requiresAuth {
-    feeConfigPointer = SSTORE2.write(abi.encode(_feeConfig));
-    emit FeesUpdated(_feeConfig.feeRate, _feeConfig.feesController);
+    feeRate = _feeRate;
+    emit FeesUpdated(_feeRate);
   }
 
-  function pause() public isNotPaused requiresAuth {
+  ///// DEV FUNCTIONALITIES /////
+
+  function deprecate() public whenNotPaused requiresAuth {
     asset.safeApprove(farmContractAddress, 0);
-    paused = true;
+    _pause();
     _emergencyUnfarm();
   }
 
-  function unpause() public isPaused requiresAuth {
+  function undeprecate() public whenPaused requiresAuth {
     asset.safeApprove(farmContractAddress, type(uint256).max);
-    paused = false;
+    _unpause();
     _farm(asset.balanceOf(address(this)));
   }
-
-  /*
-   * EMERGENCY MITIGATION
-   */
 
   // Emergency calls for recovery
   // Use cases:
   // - Refund by farm through different contract
   // - Rewards on different external rewarder contract
-  function rescueOperation(RescueCall[] calldata calls) public requiresAuth isPaused {
-    require(paused, "StratX4: !paused");
-
+  function rescueOperation(RescueCall[] calldata calls) public requiresAuth whenPaused {
     for (uint256 i; i < calls.length; i++) {
       RescueCall calldata call = calls[i];
       // Calls to the asset are disallowed

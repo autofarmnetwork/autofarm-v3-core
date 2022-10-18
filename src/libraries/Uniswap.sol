@@ -70,7 +70,9 @@ library Uniswap {
     (address token0, address token1) = sortTokens(tokenA, tokenB);
     pair = address(
       uint160(
-        uint256(keccak256(abi.encodePacked(hex"ff", factory, keccak256(abi.encodePacked(token0, token1)), INIT_HASH_CODE)))
+        uint256(
+          keccak256(abi.encodePacked(hex"ff", factory, keccak256(abi.encodePacked(token0, token1)), INIT_HASH_CODE))
+        )
       )
     );
   }
@@ -102,11 +104,7 @@ library Uniswap {
     uint256 amountBDesired,
     uint256 amountAMin,
     uint256 amountBMin
-  )
-    internal
-    view
-    returns (uint256 amountA, uint256 amountB)
-  {
+  ) internal view returns (uint256 amountA, uint256 amountB) {
     (uint256 reserve0, uint256 reserve1,) = pair.getReserves();
     (uint256 reserveA, uint256 reserveB) = tokenA > tokenB ? (reserve0, reserve1) : (reserve1, reserve0);
     if (reserveA == 0 && reserveB == 0) {
@@ -157,10 +155,7 @@ library Uniswap {
     address otherToken,
     uint256 amountIn,
     address to
-  )
-    internal
-    returns (uint256 outAmount)
-  {
+  ) internal returns (uint256 outAmount) {
     ERC20(inToken).safeTransfer(pair, swapAmount);
     if (inToken < otherToken) {
       IUniswapV2Pair(pair).swap(0, tokenAmountOut, address(this), "");

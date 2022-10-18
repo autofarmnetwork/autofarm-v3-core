@@ -11,9 +11,7 @@ library StratX3Lib {
     address _userAddress,
     uint256 _sharesChange,
     bool _isSharesRemoved
-  )
-    internal
-  {
+  ) internal {
     for (uint256 i = 0; i < rewarders.length; i++) {
       IReward(rewarders[i]).updateRewards(_userAddress, _sharesChange, _isSharesRemoved);
     }

@@ -153,9 +153,7 @@ contract RewardsV4 {
     uint256 _sharesTotal,
     uint256 _sharesChange,
     bool _isRemoveShares
-  )
-    public
-  {
+  ) public {
     /*
         if (!_isRemoveShares && !isContractsAllowed &&
             _user.isContract() && !whitelist[_user]

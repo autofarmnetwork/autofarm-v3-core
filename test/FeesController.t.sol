@@ -32,7 +32,8 @@ contract StratX4FeesWithoutConfigTest is Test {
 
   function setUp() public {
     vm.createSelectFork(vm.rpcUrl(CHAIN), BLOCK);
-    MultiRolesAuthority auth = Configurer.createAuthority(address(this));
+    MultiRolesAuthority auth = Configurer.createAuthority();
+    auth.setOwner(address(this));
     auth.setUserRole(keeper, uint8(Roles.Keeper), true);
     feesController = new AutofarmFeesController(
      auth,
@@ -55,7 +56,8 @@ contract StratX4FeesTest is Test {
 
   function setUp() public {
     vm.createSelectFork(vm.rpcUrl(CHAIN));
-    MultiRolesAuthority auth = Configurer.createAuthority(address(this));
+    MultiRolesAuthority auth = Configurer.createAuthority();
+    auth.setOwner(address(this));
     auth.setUserRole(keeper, uint8(Roles.Keeper), true);
     auth.setUserRole(deployer, uint8(Roles.Gov), true);
     auth.setOwner(deployer);

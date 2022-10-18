@@ -8,27 +8,10 @@ import {Configurer} from "./auth/Auth.sol";
 import {AutofarmFeesController} from "./FeesController.sol";
 
 contract AutofarmDeployer is Auth {
-  AutofarmFeesController public immutable feesController;
+  constructor(Authority auth) Auth(address(0), auth) {}
 
-  constructor(address _treasury, address _votingController, uint8 _portionToPlatform, uint8 _portionToAUTOBurn)
-    Auth(address(this), Configurer.createAuthority(msg.sender))
-  {
-    feesController = new AutofarmFeesController(
-     authority,
-     _treasury,
-     _votingController,
-     _portionToPlatform,
-     _portionToAUTOBurn
-    );
-  }
-
-  function deployStrat(bytes32 salt, bytes memory initCode) public requiresAuth returns (address) {
-    bytes memory args = abi.encode(address(authority));
+  function deployStrat(bytes32 salt, bytes memory initCode, bytes memory args) public requiresAuth returns (address) {
     bytes memory creationCode = abi.encodePacked(initCode, args);
     return CREATE3.deploy(salt, creationCode, 0);
-  }
-
-  function setUserRole(address user, uint8 role, bool enabled) public requiresAuth {
-    MultiRolesAuthority(address(authority)).setUserRole(user, role, enabled);
   }
 }
