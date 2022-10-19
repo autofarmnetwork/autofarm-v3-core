@@ -22,6 +22,7 @@ contract StratX4Test is Test {
   // mock Authority: owner = this test contract
   Authority public authority;
   MockStrat public strat;
+  address public feesController;
 
   event FeeSetAside(address earnedAddress, uint256 amount);
   event FarmDeposit(uint256 amount);
@@ -33,9 +34,10 @@ contract StratX4Test is Test {
     asset = new MockERC20();
     rewardToken = new MockERC20();
     authority = new MockAuthority();
+    feesController = address(uint160(uint256(keccak256("feesController"))));
     strat = new MockStrat(
       address(asset),
-      address(uint160(uint256(keccak256("feesController")))),
+      feesController,
       1e14,
       authority
     );
@@ -61,14 +63,14 @@ contract StratX4Test is Test {
   function testEarn(uint96 earnedAmount, uint96 profit) public {
     strat.debug__warmFeesCollectable(address(rewardToken));
     uint256 minHarvest = strat.minEarnedAmountToHarvest();
-    vm.assume(earnedAmount > minHarvest && profit > 0);
+    vm.assume(earnedAmount > minHarvest && profit > 1);
 
     vm.expectEmit(false, false, false, true, address(strat));
     emit FarmHarvest();
     vm.expectEmit(false, false, false, false, address(strat));
     emit FeeSetAside(address(rewardToken), 0);
     vm.expectEmit(false, false, false, true, address(strat));
-    emit FarmDeposit(profit);
+    emit FarmDeposit(profit - 1);
     vm.expectEmit(true, false, false, false, address(strat));
     emit Earn(address(rewardToken), 0, 0, 0);
 
@@ -114,13 +116,20 @@ contract StratX4Test is Test {
 
     assertEq(strat.feesCollectable(address(rewardToken)).get(), totalFees, "Collectible fees should add up");
 
+    deal(address(rewardToken), feesController, 1); // simulate 1 wei optimization on feesController
+
+    if (totalFees <= 1) {
+      vm.expectRevert("No fees collectable");
+    }
     strat.collectFees(address(rewardToken));
-    assertEq(
-      rewardToken.balanceOf(strat.feesController()),
-      totalFees - 1,
-      "Rewards should be sent to feesController according to feeRate"
-    );
-    assertEq(strat.collectableFee(address(rewardToken)), 1, "After collection there should be 1 wei left");
+    if (totalFees > 1) {
+      assertEq(
+        rewardToken.balanceOf(strat.feesController()),
+        totalFees,
+        "Rewards should be sent to feesController according to feeRate"
+      );
+      assertEq(strat.collectableFee(address(rewardToken)), 1, "After collection there should be 1 wei left");
+    }
   }
 
   function testVestingProfits(uint96[2][] memory earns) public {

@@ -95,10 +95,7 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
   function beforeWithdraw(uint256 assets, uint256 /*shares*/ ) internal override {
     if (!paused()) {
-      uint256 balance = asset.balanceOf(address(this));
-      if (balance < assets) {
-        _unfarm(assets - balance);
-      }
+      _unfarm(assets);
     }
   }
 
@@ -114,8 +111,12 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
   function earn(address earnedAddress) public requiresAuth whenNotPaused returns (uint256 profit) {
     harvest(earnedAddress);
     (uint256 earnedAmount, uint256 fee) = getEarnedAmountAfterFee(earnedAddress);
-    profit = compound(earnedAddress, earnedAmount);
+
+    // Gas optimization: leave at least 1 wei in the Strat
+    profit = compound(earnedAddress, earnedAmount) - 1;
+
     require(profit > 0, "StratX4: Earn produces no profit");
+
     _farm(profit);
     _vestProfit(profit);
     emit Earn(earnedAddress, profit, earnedAmount, fee);
@@ -155,9 +156,11 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
   /* @earnbot
    * Called in batches to decouple fees and compounding.
    * Should calc gas vs fees to decide when it is economical to collect fees
+   * Optimize for gas by leaving 1 wei in the Strat
    */
   function collectFees(address earnedAddress) public whenNotPaused requiresAuth {
     uint256 amount = feesCollectable[earnedAddress].get() - 1;
+    require(amount > 0, "No fees collectable");
     ERC20(earnedAddress).safeTransfer(feesController, amount);
     feesCollectable[earnedAddress] = FlippedUint256Lib.create(1);
     emit FeeCollected(earnedAddress, amount);
