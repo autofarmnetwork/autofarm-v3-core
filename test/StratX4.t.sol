@@ -35,7 +35,6 @@ contract StratX4Test is Test {
     authority = new MockAuthority();
     strat = new MockStrat(
       address(asset),
-      address(uint160(uint256(keccak256("farm")))),
       address(uint160(uint256(keccak256("feesController")))),
       1e14,
       authority
@@ -118,10 +117,10 @@ contract StratX4Test is Test {
     strat.collectFees(address(rewardToken));
     assertEq(
       rewardToken.balanceOf(strat.feesController()),
-      totalFees,
-      "Rewards should be sent to feesController according to feeRate (and rounded up)"
+      totalFees - 1,
+      "Rewards should be sent to feesController according to feeRate"
     );
-    assertEq(strat.collectableFee(address(rewardToken)), 0, "After collection there should be none collectable");
+    assertEq(strat.collectableFee(address(rewardToken)), 1, "After collection there should be 1 wei left");
   }
 
   function testVestingProfits(uint96[2][] memory earns) public {
@@ -147,7 +146,7 @@ contract StratX4Test is Test {
       vestedSinceLastEarn = strat.totalAssets() - prevTotalAssets;
       prevTotalAssets = strat.totalAssets();
 
-      deal(address(asset), strat.farmContractAddress(), asset.balanceOf(strat.farmContractAddress()) + amount);
+      deal(address(asset), address(strat), asset.balanceOf(address(strat)) + amount);
       strat.public__vestProfit(amount);
 
       (lastEarnBlock, profitsVesting) = strat.profitVesting();

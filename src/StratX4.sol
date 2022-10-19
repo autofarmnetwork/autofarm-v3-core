@@ -18,7 +18,6 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
   uint256 public constant FEE_RATE_PRECISION = 1e18;
 
-  address public immutable farmContractAddress;
   address public immutable feesController;
   uint96 public immutable creationBlock;
   mapping(address => FlippedUint256) public feesCollectable;
@@ -32,7 +31,6 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
   event FeeCollected(address indexed earnedAddress, uint256 amount);
   event FeesUpdated(uint256 feeRate);
   event Earn(address indexed earnedAddress, uint256 assetsIncrease, uint256 earnedAmount, uint256 fee);
-  event FarmAllowanceReset();
 
   struct ProfitVesting {
     // 96 bits should be enough for > 2500 years of operation,
@@ -48,18 +46,15 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
   constructor(
     address _asset,
-    address _farmContractAddress,
     address _feesController,
     uint256 _feeRate,
     Authority _authority
   ) ERC4626(ERC20(_asset), "Autofarm Strategy", "AF-Strat") Auth(address(0), _authority) {
     require(_feeRate <= MAX_FEE_RATE, "StratX4: feeRate exceeds limit");
 
-    farmContractAddress = _farmContractAddress;
     feesController = _feesController;
     feeRate = _feeRate;
 
-    ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
     uint96 _creationBlock = uint96(block.number);
     profitVesting = ProfitVesting({lastEarnBlock: _creationBlock, amount: 0});
     creationBlock = _creationBlock;
@@ -69,18 +64,17 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
   // totalAssets is adjusted to vest earned profits over a vesting period
   // to prevent front-running and remove the need for an entrance fee
-  function totalAssets() public view override returns (uint256) {
-    if (paused()) {
-      return asset.balanceOf(address(this));
-    }
+  function totalAssets() public view override returns (uint256 amount) {
+    amount = asset.balanceOf(address(this));
 
-    uint256 _vestingProfit = vestingProfit();
-    uint256 amount = _lockedAssets() + asset.balanceOf(address(this));
-    if (_vestingProfit > amount) {
-      return 0;
+    if (!paused()) {
+      amount += lockedAssets();
+      uint256 _vestingProfit = vestingProfit();
+      if (_vestingProfit > amount) {
+        _vestingProfit = amount;
+      }
+      amount -= _vestingProfit;
     }
-
-    return amount - _vestingProfit;
   }
 
   function vestingProfit() public view returns (uint256) {
@@ -91,7 +85,7 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     return profitVesting.amount.mulDivUp(PROFIT_VESTING_PERIOD - blocksSinceLastEarn, PROFIT_VESTING_PERIOD);
   }
 
-  function _lockedAssets() internal view virtual returns (uint256);
+  function lockedAssets() internal view virtual returns (uint256);
 
   function afterDeposit(uint256 assets, uint256 /*shares*/ ) internal override {
     if (!paused()) {
@@ -114,11 +108,6 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
   function _unfarm(uint256 wantAmt) internal virtual;
   function _emergencyUnfarm() internal virtual;
   function pendingRewards() public view virtual returns (uint256);
-
-  function resetFarmAllowance() public requiresAuth whenNotPaused {
-    ERC20(asset).safeApprove(farmContractAddress, type(uint256).max);
-    emit FarmAllowanceReset();
-  }
 
   ///// Compounding /////
 
@@ -168,9 +157,9 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
    * Should calc gas vs fees to decide when it is economical to collect fees
    */
   function collectFees(address earnedAddress) public whenNotPaused requiresAuth {
-    uint256 amount = feesCollectable[earnedAddress].get();
+    uint256 amount = feesCollectable[earnedAddress].get() - 1;
     ERC20(earnedAddress).safeTransfer(feesController, amount);
-    feesCollectable[earnedAddress] = FlippedUint256Lib.create(0);
+    feesCollectable[earnedAddress] = FlippedUint256Lib.create(1);
     emit FeeCollected(earnedAddress, amount);
   }
 
@@ -208,13 +197,11 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
   ///// DEV FUNCTIONALITIES /////
 
   function deprecate() public whenNotPaused requiresAuth {
-    asset.safeApprove(farmContractAddress, 0);
     _pause();
     _emergencyUnfarm();
   }
 
   function undeprecate() public whenPaused requiresAuth {
-    asset.safeApprove(farmContractAddress, type(uint256).max);
     _unpause();
     _farm(asset.balanceOf(address(this)));
   }

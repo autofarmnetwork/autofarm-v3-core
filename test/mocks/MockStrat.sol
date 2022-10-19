@@ -18,11 +18,10 @@ contract MockStrat is StratX4 {
 
   constructor(
     address _asset,
-    address _farmContractAddress,
     address _feesController,
     uint256 _feeRate,
     Authority _authority
-  ) StratX4(_asset, _farmContractAddress, _feesController, _feeRate, _authority) {}
+  ) StratX4(_asset, _feesController, _feeRate, _authority) {}
 
   // Farming mechanism are disabled for tests
   function _farm(uint256 amount) internal override {
@@ -61,8 +60,8 @@ contract MockStrat is StratX4 {
   // or remove completely
   function pendingRewards() public view override returns (uint256) {}
 
-  function _lockedAssets() internal view override returns (uint256) {
-    return asset.balanceOf(farmContractAddress);
+  function lockedAssets() internal pure override returns (uint256) {
+    return 0;
   }
 
   function debug__warmFeesCollectable(address earnedAddress) public {

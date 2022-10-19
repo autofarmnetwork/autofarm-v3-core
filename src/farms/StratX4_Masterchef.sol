@@ -21,6 +21,7 @@ abstract contract StratX4_Masterchef is StratX4 {
   // Farm
   uint256 public immutable pid; // pid of pool in farmContractAddress
   bytes4 public immutable pendingRewardsSelector;
+  address public immutable farmContractAddress;
 
   constructor(
     address _asset,
@@ -30,14 +31,15 @@ abstract contract StratX4_Masterchef is StratX4 {
     uint256 _feeRate,
     bytes4 _pendingRewardsSelector,
     Authority _authority
-  ) StratX4(_asset, _farmContractAddress, _feesController, _feeRate, _authority) {
+  ) StratX4(_asset, _feesController, _feeRate, _authority) {
     pid = _pid;
     pendingRewardsSelector = _pendingRewardsSelector;
+    farmContractAddress = _farmContractAddress;
   }
 
   // ERC4626 compatibility
 
-  function _lockedAssets() internal view override returns (uint256) {
+  function lockedAssets() internal view override returns (uint256) {
     return IMasterchefV2(farmContractAddress).userInfo(pid, address(this)).amount;
   }
 
@@ -51,6 +53,10 @@ abstract contract StratX4_Masterchef is StratX4 {
   // Farming
 
   function _farm(uint256 wantAmt) internal override {
+    ERC20 _asset = asset;
+    if (_asset.allowance(address(this), farmContractAddress) < wantAmt) {
+      _asset.safeApprove(farmContractAddress, type(uint256).max);
+    }
     IMasterchefV2(farmContractAddress).deposit(pid, wantAmt);
   }
 
@@ -63,6 +69,7 @@ abstract contract StratX4_Masterchef is StratX4 {
   }
 
   function _emergencyUnfarm() internal override {
+    asset.safeApprove(farmContractAddress, 0);
     IMasterchefV2(farmContractAddress).emergencyWithdraw(pid);
   }
 }
