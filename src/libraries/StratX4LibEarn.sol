@@ -5,11 +5,10 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {SSTORE2} from "solmate/utils/SSTORE2.sol";
 import {IUniswapV2Pair} from "@uniswap/v2-core/interfaces/IUniswapV2Pair.sol";
-import {IUniswapV2Router02} from "@uniswap/v2-periphery/interfaces/IUniswapV2Router02.sol";
+import {IUniswapV2Router02} from
+  "@uniswap/v2-periphery/interfaces/IUniswapV2Router02.sol";
 
 import {Uniswap} from "./Uniswap.sol";
-
-error EarnFailed();
 
 /*
  * StratX4LibEarn
@@ -31,14 +30,16 @@ error EarnFailed();
  * - swap using other LPs
  */
 
-struct SwapConfig {
-  address pair;
-  address tokenOut;
+struct SwapRoute {
+  address[] pairsPath;
+  address[] tokensPath;
+  uint256[] swapFees; // set to 0 if dynamic
 }
 
-struct LP1Config {
-  uint256 pairSwapFee; // set to 0 if dynamic
-  SwapConfig[] earnedToBasePath;
+struct ZapLiquidityConfig {
+  address lpSubtokenIn;
+  address lpSubtokenOut;
+  uint256 swapFee; // set to 0 if dynamic
 }
 
 // Biswap
@@ -49,50 +50,134 @@ interface IUniswapV2PairDynamicFee {
 library StratX4LibEarn {
   using SafeTransferLib for ERC20;
 
-  function _getPairSwapFee(address pair) internal view returns (uint256) {
-    return (1000 - IUniswapV2PairDynamicFee(pair).swapFee()) * 10;
+  function swapExactTokensForTokens(
+    address tokenIn,
+    uint256 amountIn,
+    uint256[] memory swapFees,
+    address[] memory pairsPath,
+    address[] memory tokensPath
+  ) internal returns (uint256 amountOut) {
+    require(pairsPath.length > 0);
+
+    amountOut = amountIn;
+    ERC20(tokenIn).safeTransfer(pairsPath[0], amountIn);
+
+    for (uint256 i; i < pairsPath.length;) {
+      amountOut = Uniswap._swap(
+        pairsPath[i],
+        swapFees[i],
+        i == 0 ? tokenIn : tokensPath[i - 1],
+        tokensPath[i],
+        amountOut,
+        i == pairsPath.length - 1 ? address(this) : pairsPath[i + 1]
+      );
+      unchecked {
+        i++;
+      }
+    }
   }
 
-  function compoundLP1(
-    ERC20 asset,
-    address tokenBase,
-    address tokenOther,
-    uint256 earnedAmt,
-    ERC20 earnedAddress,
-    LP1Config memory earnConfig
-  ) internal returns (uint256 assets) {
-    // Swap to base
-    uint256 swapAmount = earnedAmt;
-    if (earnConfig.earnedToBasePath.length > 0) {
-      ERC20(earnedAddress).safeTransfer(earnConfig.earnedToBasePath[0].pair, swapAmount);
+  function swapExactTokensToLiquidity1(
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn,
+    SwapRoute memory swapRoute,
+    ZapLiquidityConfig memory zapLiquidityConfig
+  ) internal returns (uint256 amountOut) {
+    // sanity checks
 
-      for (uint256 i; i < earnConfig.earnedToBasePath.length;) {
-        SwapConfig memory swapConfig = earnConfig.earnedToBasePath[i];
-        swapAmount = Uniswap._swap(
-          swapConfig.pair,
-          earnConfig.pairSwapFee > 0 ? earnConfig.pairSwapFee : _getPairSwapFee(swapConfig.pair),
-          i == 0 ? address(earnedAddress) : earnConfig.earnedToBasePath[i - 1].tokenOut,
-          i == earnConfig.earnedToBasePath.length - 1 ? tokenBase : swapConfig.tokenOut,
-          swapAmount,
-          i == earnConfig.earnedToBasePath.length - 1 ? address(this) : earnConfig.earnedToBasePath[i + 1].pair
-        );
+    // Swap to reserve tokenIn
+    if (swapRoute.pairsPath.length > 0) {
+      amountOut = swapExactTokensForTokens(
+        tokenIn,
+        amountIn,
+        swapRoute.swapFees,
+        swapRoute.pairsPath,
+        swapRoute.tokensPath
+      );
+    } else {
+      amountOut = amountIn;
+    }
+
+    amountOut -= 1;
+
+    (uint256 swapAmount, uint256 tokenAmountOut) = Uniswap.calcSimpleZap(
+      tokenOut,
+      zapLiquidityConfig.swapFee,
+      amountOut,
+      zapLiquidityConfig.lpSubtokenIn,
+      zapLiquidityConfig.lpSubtokenOut
+    );
+
+    ERC20(zapLiquidityConfig.lpSubtokenIn).safeTransfer(tokenOut, swapAmount);
+    if (zapLiquidityConfig.lpSubtokenIn < zapLiquidityConfig.lpSubtokenOut) {
+      IUniswapV2Pair(tokenOut).swap(0, tokenAmountOut, address(this), "");
+    } else {
+      IUniswapV2Pair(tokenOut).swap(tokenAmountOut, 0, address(this), "");
+    }
+    tokenAmountOut -= 1;
+    ERC20(zapLiquidityConfig.lpSubtokenIn).safeTransfer(
+      tokenOut, amountOut - swapAmount
+    );
+    ERC20(zapLiquidityConfig.lpSubtokenOut).safeTransfer(
+      tokenOut, tokenAmountOut
+    );
+    amountOut = IUniswapV2Pair(tokenOut).mint(address(this));
+  }
+
+  function swapExactTokensToLiquidity1WithDynamicFees(
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn,
+    SwapRoute memory swapRoute,
+    ZapLiquidityConfig memory zapLiquidityConfig,
+    function (address) returns (uint256) getPairSwapFee
+  ) internal returns (uint256 amountOut) {
+    // sanity checks
+
+    // Swap to reserve tokenIn
+    if (swapRoute.pairsPath.length > 0) {
+      for (uint256 i; i < swapRoute.pairsPath.length;) {
+        swapRoute.swapFees[i] = getPairSwapFee(swapRoute.pairsPath[i]);
         unchecked {
           i++;
         }
       }
+
+      amountOut = swapExactTokensForTokens(
+        tokenIn,
+        amountIn,
+        swapRoute.swapFees,
+        swapRoute.pairsPath,
+        swapRoute.tokensPath
+      );
+    } else {
+      amountOut = amountIn;
     }
 
-    uint256 baseAmount = swapAmount;
-    uint256 tokenAmountOut;
-    (swapAmount, tokenAmountOut) = Uniswap.calcSimpleZap(
-      address(asset),
-      earnConfig.pairSwapFee > 0 ? earnConfig.pairSwapFee : _getPairSwapFee(address(asset)),
-      baseAmount,
-      tokenBase,
-      tokenOther
+    amountOut -= 1;
+
+    (uint256 swapAmount, uint256 tokenAmountOut) = Uniswap.calcSimpleZap(
+      tokenOut,
+      getPairSwapFee(tokenOut),
+      amountOut,
+      zapLiquidityConfig.lpSubtokenIn,
+      zapLiquidityConfig.lpSubtokenOut
     );
 
-    assets =
-      Uniswap.oneSidedSwap(address(asset), swapAmount, tokenAmountOut, tokenBase, tokenOther, baseAmount, address(this));
+    ERC20(zapLiquidityConfig.lpSubtokenIn).safeTransfer(tokenOut, swapAmount);
+    if (zapLiquidityConfig.lpSubtokenIn < zapLiquidityConfig.lpSubtokenOut) {
+      IUniswapV2Pair(tokenOut).swap(0, tokenAmountOut, address(this), "");
+    } else {
+      IUniswapV2Pair(tokenOut).swap(tokenAmountOut, 0, address(this), "");
+    }
+    tokenAmountOut -= 1;
+    ERC20(zapLiquidityConfig.lpSubtokenIn).safeTransfer(
+      tokenOut, amountOut - swapAmount
+    );
+    ERC20(zapLiquidityConfig.lpSubtokenOut).safeTransfer(
+      tokenOut, tokenAmountOut
+    );
+    amountOut = IUniswapV2Pair(tokenOut).mint(address(this));
   }
 }

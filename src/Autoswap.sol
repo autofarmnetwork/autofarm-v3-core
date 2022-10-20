@@ -14,7 +14,11 @@ error DexNotWhitelisted(address dex);
 error PairNotFound(address router, address token0, address token1);
 error SubswapFailed(address target, address inToken, uint256 subswapInAmount);
 error SubswapDexIndexOutOfBounds(
-  address tokenIn, address tokenOut, uint256 relativeAmountIndex, uint256 dexIndex, uint256 dexConfigs
+  address tokenIn,
+  address tokenOut,
+  uint256 relativeAmountIndex,
+  uint256 dexIndex,
+  uint256 dexConfigs
 );
 
 // TODOs:
@@ -31,7 +35,11 @@ contract AutoSwapV5 is Owned {
   address payable public immutable WETHAddress;
 
   event Swapped(
-    address indexed sender, address indexed inToken, address indexed outToken, uint256 amountIn, uint256 amountOut
+    address indexed sender,
+    address indexed inToken,
+    address indexed outToken,
+    uint256 amountIn,
+    uint256 amountOut
   );
 
   enum RouterTypes {
@@ -97,17 +105,15 @@ contract AutoSwapV5 is Owned {
     OneSwap[] calldata _swaps,
     address to,
     uint256 deadline
-  )
-    public
-    ensure(deadline)
-    returns (uint256 amountOut)
-  {
+  ) public ensure(deadline) returns (uint256 amountOut) {
     require(amountIn > 0, "input amount should be positive");
     require(amountOutMin > 0, "minimum out amount should be positive");
     require(_swaps.length > 0, "swaps must be non-empty");
 
     ERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
-    amountOut = _performSwap(ERC20(tokenIn), ERC20(tokenOut), amountIn, amountOutMin, _dexes, _swaps);
+    amountOut = _performSwap(
+      ERC20(tokenIn), ERC20(tokenOut), amountIn, amountOutMin, _dexes, _swaps
+    );
     ERC20(tokenOut).safeTransfer(to, amountOut);
     emit Swapped(msg.sender, tokenIn, tokenOut, amountIn, amountOut);
   }
@@ -119,18 +125,20 @@ contract AutoSwapV5 is Owned {
     OneSwap[] calldata _swaps,
     address to,
     uint256 deadline
-  )
-    public
-    payable
-    ensure(deadline)
-    returns (uint256 amountOut)
-  {
+  ) public payable ensure(deadline) returns (uint256 amountOut) {
     require(msg.value > 0, "must have value");
     require(amountOutMin > 0, "minimum out amount should be positive");
     require(_swaps.length > 0, "swaps must be non-empty");
 
     WETH(WETHAddress).deposit{value: msg.value}();
-    amountOut = _performSwap(ERC20(WETHAddress), ERC20(tokenOut), msg.value, amountOutMin, _dexes, _swaps);
+    amountOut = _performSwap(
+      ERC20(WETHAddress),
+      ERC20(tokenOut),
+      msg.value,
+      amountOutMin,
+      _dexes,
+      _swaps
+    );
     ERC20(tokenOut).safeTransfer(to, amountOut);
     emit Swapped(msg.sender, WETHAddress, tokenOut, msg.value, amountOut);
   }
@@ -143,17 +151,15 @@ contract AutoSwapV5 is Owned {
     OneSwap[] calldata _swaps,
     address to,
     uint256 deadline
-  )
-    public
-    ensure(deadline)
-    returns (uint256 amountOut)
-  {
+  ) public ensure(deadline) returns (uint256 amountOut) {
     require(amountIn > 0, "input amount should be positive");
     require(amountOutMin > 0, "minimum out amount should be positive");
     require(_swaps.length > 0, "swaps must be non-empty");
 
     ERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
-    amountOut = _performSwap(ERC20(tokenIn), ERC20(WETHAddress), amountIn, amountOutMin, _dexes, _swaps);
+    amountOut = _performSwap(
+      ERC20(tokenIn), ERC20(WETHAddress), amountIn, amountOutMin, _dexes, _swaps
+    );
     WETH(WETHAddress).withdraw(amountOut);
     payable(to).transfer(amountOut);
     emit Swapped(msg.sender, tokenIn, WETHAddress, amountIn, amountOut);
@@ -166,15 +172,13 @@ contract AutoSwapV5 is Owned {
     uint256 amountOutMin,
     address[] calldata _dexes,
     OneSwap[] calldata _swaps
-  )
-    internal
-    returns (uint256 amountOut)
-  {
+  ) internal returns (uint256 amountOut) {
     require(_swaps.length > 0, "swaps cannot be empty");
 
     DexConfig[] memory _dexConfigs = new DexConfig[](_dexes.length);
     for (uint256 i; i < _dexes.length; i++) {
-      _dexConfigs[i] = abi.decode(SSTORE2.read(dexConfigs[_dexes[i]]), (DexConfig));
+      _dexConfigs[i] =
+        abi.decode(SSTORE2.read(dexConfigs[_dexes[i]]), (DexConfig));
       // TODO: convert to revert Error
       if (_dexConfigs[i].dexType == RouterTypes.NullDex) {
         revert DexNotWhitelisted(_dexes[i]);
@@ -185,7 +189,9 @@ contract AutoSwapV5 is Owned {
       OneSwap calldata _swap = _swaps[i];
       _performSplitSwap(
         _swap,
-        _swap.tokenIn == address(tokenIn) ? amountIn : ERC20(_swap.tokenIn).balanceOf(address(this)),
+        _swap.tokenIn == address(tokenIn)
+          ? amountIn
+          : ERC20(_swap.tokenIn).balanceOf(address(this)),
         _dexes,
         _dexConfigs
       );
@@ -196,7 +202,10 @@ contract AutoSwapV5 is Owned {
 
     amountOut = tokenOut.balanceOf(address(this));
     if (amountOutMin > 0) {
-      require(amountOut >= amountOutMin, "Return amount less than the minimum required amount");
+      require(
+        amountOut >= amountOutMin,
+        "Return amount less than the minimum required amount"
+      );
     }
   }
 
@@ -205,14 +214,18 @@ contract AutoSwapV5 is Owned {
     uint256 tokenInBalance,
     address[] calldata _dexes,
     DexConfig[] memory _dexConfigs
-  )
-    internal
-  {
+  ) internal {
     uint256 tokenInSwapped;
     for (uint256 i; i < _swap.relativeAmounts.length;) {
       RelativeAmount calldata relativeAmount = _swap.relativeAmounts[i];
       if (relativeAmount.dexIndex >= _dexConfigs.length) {
-        revert SubswapDexIndexOutOfBounds(_swap.tokenIn, _swap.tokenOut, i, relativeAmount.dexIndex, _dexConfigs.length);
+        revert SubswapDexIndexOutOfBounds(
+          _swap.tokenIn,
+          _swap.tokenOut,
+          i,
+          relativeAmount.dexIndex,
+          _dexConfigs.length
+        );
       }
       DexConfig memory dexConfig = _dexConfigs[relativeAmount.dexIndex];
       address dexAddress = _dexes[relativeAmount.dexIndex];
@@ -225,7 +238,9 @@ contract AutoSwapV5 is Owned {
       }
       if (dexConfig.dexType == RouterTypes.Uniswap) {
         Uniswap.swap(
-          Uniswap.getPair(dexAddress, dexConfig.INIT_HASH_CODE, _swap.tokenIn, _swap.tokenOut),
+          Uniswap.getPair(
+            dexAddress, dexConfig.INIT_HASH_CODE, _swap.tokenIn, _swap.tokenOut
+          ),
           dexConfig.fee,
           _swap.tokenIn,
           _swap.tokenOut,
@@ -233,14 +248,19 @@ contract AutoSwapV5 is Owned {
         );
       } else if (dexConfig.dexType == RouterTypes.Curve) {
         ERC20(_swap.tokenIn).safeApprove(dexAddress, subswapInAmount);
-        (bool succeeded,) = dexAddress.call(SwapEncoder.encodeSwapCurve(subswapInAmount, relativeAmount.data));
+        (bool succeeded,) = dexAddress.call(
+          SwapEncoder.encodeSwapCurve(subswapInAmount, relativeAmount.data)
+        );
         if (!succeeded) {
           revert SubswapFailed(dexAddress, _swap.tokenIn, subswapInAmount);
         }
       } else if (dexConfig.dexType == RouterTypes.Saddle) {
         ERC20(_swap.tokenIn).safeApprove(dexAddress, subswapInAmount);
-        (bool succeeded,) =
-          dexAddress.call(SwapEncoder.encodeSwapSaddle(subswapInAmount, block.timestamp, relativeAmount.data));
+        (bool succeeded,) = dexAddress.call(
+          SwapEncoder.encodeSwapSaddle(
+            subswapInAmount, block.timestamp, relativeAmount.data
+          )
+        );
         if (!succeeded) {
           revert SubswapFailed(dexAddress, _swap.tokenIn, subswapInAmount);
         }
@@ -275,21 +295,29 @@ contract AutoSwapV5 is Owned {
   }
 
   event SwapToLP(
-    address pair, address token0, address token1, uint256 amountOut, uint256 amountOut0, uint256 amountOut1
+    address pair,
+    address token0,
+    address token1,
+    uint256 amountOut,
+    uint256 amountOut0,
+    uint256 amountOut1
   );
 
-  function swapToLP1FromETH(address[] calldata _dexes, LP1SwapOptions calldata lpSwapOptions, uint256 deadline)
-    external
-    payable
-    ensure(deadline)
-    returns (uint256 amountOut)
-  {
+  function swapToLP1FromETH(
+    address[] calldata _dexes,
+    LP1SwapOptions calldata lpSwapOptions,
+    uint256 deadline
+  ) external payable ensure(deadline) returns (uint256 amountOut) {
     require(msg.value > 0);
-    require(lpSwapOptions.swapsToBase.length > 0 || lpSwapOptions.base == WETHAddress);
+    require(
+      lpSwapOptions.swapsToBase.length > 0 || lpSwapOptions.base == WETHAddress
+    );
 
     WETH(WETHAddress).deposit{value: msg.value}();
     {
-      amountOut = _swapToLP1(WETHAddress, msg.value, _dexes, lpSwapOptions.swapsToBase, lpSwapOptions);
+      amountOut = _swapToLP1(
+        WETHAddress, msg.value, _dexes, lpSwapOptions.swapsToBase, lpSwapOptions
+      );
     }
   }
 
@@ -299,16 +327,16 @@ contract AutoSwapV5 is Owned {
     address[] calldata _dexes,
     LP1SwapOptions calldata lpSwapOptions,
     uint256 deadline
-  )
-    external
-    ensure(deadline)
-    returns (uint256 amountOut)
-  {
-    require(lpSwapOptions.swapsToBase.length > 0 || lpSwapOptions.base == tokenIn);
+  ) external ensure(deadline) returns (uint256 amountOut) {
+    require(
+      lpSwapOptions.swapsToBase.length > 0 || lpSwapOptions.base == tokenIn
+    );
 
     ERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
     {
-      amountOut = _swapToLP1(tokenIn, amountIn, _dexes, lpSwapOptions.swapsToBase, lpSwapOptions);
+      amountOut = _swapToLP1(
+        tokenIn, amountIn, _dexes, lpSwapOptions.swapsToBase, lpSwapOptions
+      );
     }
   }
 
@@ -318,26 +346,49 @@ contract AutoSwapV5 is Owned {
     address[] calldata _dexes,
     OneSwap[] calldata swapsToBase,
     LP1SwapOptions calldata lpSwapOptions
-  )
-    internal
-    returns (uint256 amountOut)
-  {
-    uint256 baseAmountIn =
-      swapsToBase.length > 0
-      ? _performSwap(ERC20(tokenIn), ERC20(lpSwapOptions.base), amountIn, 0, _dexes, swapsToBase)
+  ) internal returns (uint256 amountOut) {
+    uint256 baseAmountIn = swapsToBase.length > 0
+      ? _performSwap(
+        ERC20(tokenIn),
+        ERC20(lpSwapOptions.base),
+        amountIn,
+        0,
+        _dexes,
+        swapsToBase
+      )
       : amountIn;
-    DexConfig memory dexConfig = abi.decode(SSTORE2.read(dexConfigs[_dexes[0]]), (DexConfig));
-    address pair = Uniswap.getPair(_dexes[0], dexConfig.INIT_HASH_CODE, lpSwapOptions.base, lpSwapOptions.token);
-    (uint256 swapAmount, uint256 tokenOutAmount) =
-      Uniswap.calcSimpleZap(pair, dexConfig.fee, baseAmountIn, lpSwapOptions.base, lpSwapOptions.token);
+    DexConfig memory dexConfig =
+      abi.decode(SSTORE2.read(dexConfigs[_dexes[0]]), (DexConfig));
+    address pair = Uniswap.getPair(
+      _dexes[0],
+      dexConfig.INIT_HASH_CODE,
+      lpSwapOptions.base,
+      lpSwapOptions.token
+    );
+    (uint256 swapAmount, uint256 tokenOutAmount) = Uniswap.calcSimpleZap(
+      pair, dexConfig.fee, baseAmountIn, lpSwapOptions.base, lpSwapOptions.token
+    );
     require(baseAmountIn - swapAmount > lpSwapOptions.amountOutMin0);
     require(tokenOutAmount > lpSwapOptions.amountOutMin1);
 
     amountOut = Uniswap.oneSidedSwap(
-      pair, swapAmount, tokenOutAmount, lpSwapOptions.base, lpSwapOptions.token, baseAmountIn, msg.sender
+      pair,
+      swapAmount,
+      tokenOutAmount,
+      lpSwapOptions.base,
+      lpSwapOptions.token,
+      baseAmountIn,
+      msg.sender
     );
 
-    emit SwapToLP(pair, lpSwapOptions.base, lpSwapOptions.token, amountOut, baseAmountIn - swapAmount, tokenOutAmount);
+    emit SwapToLP(
+      pair,
+      lpSwapOptions.base,
+      lpSwapOptions.token,
+      amountOut,
+      baseAmountIn - swapAmount,
+      tokenOutAmount
+      );
   }
 
   // **** ADMIN ****

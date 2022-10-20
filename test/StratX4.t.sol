@@ -28,19 +28,24 @@ contract StratX4Test is Test {
   event FarmDeposit(uint256 amount);
   event FarmWithdraw(uint256 amount);
   event FarmHarvest();
-  event Earn(address indexed earnedAddress, uint256 profit, uint256 earnedAmount, uint256 fee);
+  event Earn(
+    address indexed earnedAddress,
+    uint256 profit,
+    uint256 earnedAmount,
+    uint256 fee
+  );
 
   function setUp() public {
     asset = new MockERC20();
     rewardToken = new MockERC20();
     authority = new MockAuthority();
-    feesController = address(uint160(uint256(keccak256("feesController"))));
+    feesController = makeAddr("feesController");
     strat = new MockStrat(
       address(asset),
       feesController,
-      1e14,
       authority
     );
+    strat.setFeeRate(1e14);
   }
 
   function testTotalAssets() public {
@@ -76,7 +81,11 @@ contract StratX4Test is Test {
 
     deal(address(rewardToken), address(strat), earnedAmount);
 
-    vm.mockCall(address(strat), abi.encodeWithSelector(MockStrat.mock__compound.selector), abi.encode(profit));
+    vm.mockCall(
+      address(strat),
+      abi.encodeWithSelector(MockStrat.mock__compound.selector),
+      abi.encode(profit)
+    );
     strat.earn(address(rewardToken));
   }
 
@@ -96,25 +105,43 @@ contract StratX4Test is Test {
       vm.assume(harvested >= minHarvest); // When harvested is too small, fees will be 0 and it will fail
 
       totalHarvested += harvested;
-      uint256 expectedFee = uint256(harvested).mulDivUp(strat.feeRate(), strat.FEE_RATE_PRECISION());
+      uint256 expectedFee =
+        uint256(harvested).mulDivUp(strat.feeRate(), strat.FEE_RATE_PRECISION());
       totalFees += expectedFee;
 
       vm.expectEmit(true, false, false, true, address(strat));
       emit FeeSetAside(address(rewardToken), expectedFee);
 
       // simulate harvest rewards
-      deal(address(rewardToken), address(strat), rewardToken.balanceOf(address(strat)) + harvested);
+      deal(
+        address(rewardToken),
+        address(strat),
+        rewardToken.balanceOf(address(strat)) + harvested
+      );
 
-      (uint256 earnedAmount, uint256 fee) = strat.public__handleFees(address(rewardToken));
+      (uint256 earnedAmount, uint256 fee) =
+        strat.public__handleFees(address(rewardToken));
 
       assertEq(fee, expectedFee, "fee should equal expected");
-      assertEq(earnedAmount, harvested - expectedFee, "should return new earnedAmount less fees");
+      assertEq(
+        earnedAmount,
+        harvested - expectedFee,
+        "should return new earnedAmount less fees"
+      );
 
       // Simulate compounding the rewards
-      deal(address(rewardToken), address(strat), rewardToken.balanceOf(address(strat)) + expectedFee - harvested); // simulate harvest rewards
+      deal(
+        address(rewardToken),
+        address(strat),
+        rewardToken.balanceOf(address(strat)) + expectedFee - harvested
+      ); // simulate harvest rewards
     }
 
-    assertEq(strat.feesCollectable(address(rewardToken)).get(), totalFees, "Collectible fees should add up");
+    assertEq(
+      strat.feesCollectable(address(rewardToken)).get(),
+      totalFees,
+      "Collectible fees should add up"
+    );
 
     deal(address(rewardToken), feesController, 1); // simulate 1 wei optimization on feesController
 
@@ -128,7 +155,11 @@ contract StratX4Test is Test {
         totalFees,
         "Rewards should be sent to feesController according to feeRate"
       );
-      assertEq(strat.collectableFee(address(rewardToken)), 1, "After collection there should be 1 wei left");
+      assertEq(
+        strat.collectableFee(address(rewardToken)),
+        1,
+        "After collection there should be 1 wei left"
+      );
     }
   }
 
@@ -155,7 +186,9 @@ contract StratX4Test is Test {
       vestedSinceLastEarn = strat.totalAssets() - prevTotalAssets;
       prevTotalAssets = strat.totalAssets();
 
-      deal(address(asset), address(strat), asset.balanceOf(address(strat)) + amount);
+      deal(
+        address(asset), address(strat), asset.balanceOf(address(strat)) + amount
+      );
       strat.public__vestProfit(amount);
 
       (lastEarnBlock, profitsVesting) = strat.profitVesting();
@@ -167,29 +200,48 @@ contract StratX4Test is Test {
       totalVesting -= vestedSinceLastEarn;
 
       assertEq(profitsVesting, totalVesting, "profitsVesting should be set");
-      assertEq(strat.vestingProfit(), totalVesting, "vestingProfit should be set");
+      assertEq(
+        strat.vestingProfit(), totalVesting, "vestingProfit should be set"
+      );
 
-      assertEq(strat.totalAssets(), prevTotalAssets, "totalAssets should remain the same before and after");
+      assertEq(
+        strat.totalAssets(),
+        prevTotalAssets,
+        "totalAssets should remain the same before and after"
+      );
     }
 
     // Test vesting after earn
     vm.roll(currentBlock + strat.PROFIT_VESTING_PERIOD() / 2);
     assertEq(
       strat.totalAssets(),
-      prevTotalAssets + totalVesting.mulDivDown(strat.PROFIT_VESTING_PERIOD() / 2, strat.PROFIT_VESTING_PERIOD()),
+      prevTotalAssets
+        + totalVesting.mulDivDown(
+          strat.PROFIT_VESTING_PERIOD() / 2, strat.PROFIT_VESTING_PERIOD()
+        ),
       "totalAssets should increase linearly, rounded down"
     );
     assertEq(
       strat.vestingProfit(),
-      totalVesting.mulDivUp(strat.PROFIT_VESTING_PERIOD() / 2, strat.PROFIT_VESTING_PERIOD()),
+      totalVesting.mulDivUp(
+        strat.PROFIT_VESTING_PERIOD() / 2, strat.PROFIT_VESTING_PERIOD()
+      ),
       "vesting profit should be linear, rounded up"
     );
 
     vm.roll(currentBlock + strat.PROFIT_VESTING_PERIOD());
-    assertEq(strat.totalAssets(), prevTotalAssets + totalVesting, "totalAssets should include vested profit");
+    assertEq(
+      strat.totalAssets(),
+      prevTotalAssets + totalVesting,
+      "totalAssets should include vested profit"
+    );
     assertEq(strat.vestingProfit(), 0, "profit should vest completely");
 
     vm.roll(currentBlock + strat.PROFIT_VESTING_PERIOD() * 2);
-    assertEq(strat.totalAssets(), prevTotalAssets + totalVesting, "totalAssets should stay constant after vesting");
+    assertEq(
+      strat.totalAssets(),
+      prevTotalAssets + totalVesting,
+      "totalAssets should stay constant after vesting"
+    );
   }
 }

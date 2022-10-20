@@ -23,11 +23,18 @@ library SwapEncoder {
     int128 j;
   }
 
-  bytes4 constant CURVE_EXCHANGE = bytes4(keccak256("exchange(int128,int128,uint256,uint256)"));
+  bytes4 constant CURVE_EXCHANGE =
+    bytes4(keccak256("exchange(int128,int128,uint256,uint256)"));
 
-  function encodeSwapCurve(uint256 amount, bytes memory data) internal pure returns (bytes memory) {
+  function encodeSwapCurve(uint256 amount, bytes memory data)
+    internal
+    pure
+    returns (bytes memory)
+  {
     CurveSwapParams memory params = abi.decode(data, (CurveSwapParams));
-    return abi.encodeWithSelector(CURVE_EXCHANGE, params.i, params.j, amount, SUBSWAP_MIN_OUT_AMOUNT);
+    return abi.encodeWithSelector(
+      CURVE_EXCHANGE, params.i, params.j, amount, SUBSWAP_MIN_OUT_AMOUNT
+    );
   }
 
   /**
@@ -40,11 +47,18 @@ library SwapEncoder {
     uint8 j;
   }
 
-  bytes4 constant SADDLE_SWAP = bytes4(keccak256("swap(uint8,uint8,uint256,uint256,uint256)"));
+  bytes4 constant SADDLE_SWAP =
+    bytes4(keccak256("swap(uint8,uint8,uint256,uint256,uint256)"));
 
-  function encodeSwapSaddle(uint256 amount, uint256 deadline, bytes memory data) internal pure returns (bytes memory) {
+  function encodeSwapSaddle(uint256 amount, uint256 deadline, bytes memory data)
+    internal
+    pure
+    returns (bytes memory)
+  {
     SaddleSwapParams memory params = abi.decode(data, (SaddleSwapParams));
-    return abi.encodeWithSelector(SADDLE_SWAP, params.i, params.j, amount, SUBSWAP_MIN_OUT_AMOUNT, deadline);
+    return abi.encodeWithSelector(
+      SADDLE_SWAP, params.i, params.j, amount, SUBSWAP_MIN_OUT_AMOUNT, deadline
+    );
   }
 
   /**

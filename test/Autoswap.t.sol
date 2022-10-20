@@ -26,7 +26,8 @@ Sad Paths:
 
 string constant CHAIN = "bsc";
 uint256 constant BLOCK = 20770469;
-address payable constant WETHAddress = payable(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
+address payable constant WETHAddress =
+  payable(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
 address constant factoryAddress = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73;
 address constant factoryAddress1 = 0x858E3312ed3A876947EA49d572A7C42DE08af7EE;
 
@@ -65,12 +66,20 @@ contract AutoswapTest is Test {
     dexes[0] = factoryAddress;
 
     AutoSwapV5.OneSwap[] memory swaps = new AutoSwapV5.OneSwap[](1);
-    AutoSwapV5.RelativeAmount[] memory relativeAmounts = new AutoSwapV5.RelativeAmount[](1);
-    relativeAmounts[0] = AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
-    swaps[0] = AutoSwapV5.OneSwap({tokenIn: WETHAddress, tokenOut: AUTO, relativeAmounts: relativeAmounts});
+    AutoSwapV5.RelativeAmount[] memory relativeAmounts =
+      new AutoSwapV5.RelativeAmount[](1);
+    relativeAmounts[0] =
+      AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
+    swaps[0] = AutoSwapV5.OneSwap({
+      tokenIn: WETHAddress,
+      tokenOut: AUTO,
+      relativeAmounts: relativeAmounts
+    });
 
     uint256 balanceBefore = ERC20(AUTO).balanceOf(address(this));
-    uint256 outAmount = autoswap.swapFromETH{value: amountIn}(1, AUTO, dexes, swaps, address(this), block.timestamp);
+    uint256 outAmount = autoswap.swapFromETH{value: amountIn}(
+      1, AUTO, dexes, swaps, address(this), block.timestamp
+    );
     assertEq(outAmount, ERC20(AUTO).balanceOf(address(this)) - balanceBefore);
   }
 
@@ -81,14 +90,22 @@ contract AutoswapTest is Test {
     dexes[0] = factoryAddress;
 
     AutoSwapV5.OneSwap[] memory swaps = new AutoSwapV5.OneSwap[](1);
-    AutoSwapV5.RelativeAmount[] memory relativeAmounts = new AutoSwapV5.RelativeAmount[](1);
-    relativeAmounts[0] = AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
-    swaps[0] = AutoSwapV5.OneSwap({tokenIn: AUTO, tokenOut: WETHAddress, relativeAmounts: relativeAmounts});
+    AutoSwapV5.RelativeAmount[] memory relativeAmounts =
+      new AutoSwapV5.RelativeAmount[](1);
+    relativeAmounts[0] =
+      AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
+    swaps[0] = AutoSwapV5.OneSwap({
+      tokenIn: AUTO,
+      tokenOut: WETHAddress,
+      relativeAmounts: relativeAmounts
+    });
 
     ERC20(AUTO).approve(address(autoswap), amountIn);
 
     uint256 balanceBefore = address(this).balance;
-    uint256 outAmount = autoswap.swapToETH(AUTO, amountIn, 1, dexes, swaps, address(this), block.timestamp);
+    uint256 outAmount = autoswap.swapToETH(
+      AUTO, amountIn, 1, dexes, swaps, address(this), block.timestamp
+    );
 
     assertEq(outAmount, address(this).balance - balanceBefore);
   }
@@ -100,14 +117,29 @@ contract AutoswapTest is Test {
     dexes[0] = factoryAddress;
 
     AutoSwapV5.OneSwap[] memory swaps = new AutoSwapV5.OneSwap[](1);
-    AutoSwapV5.RelativeAmount[] memory relativeAmounts = new AutoSwapV5.RelativeAmount[](1);
-    relativeAmounts[0] = AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
-    swaps[0] = AutoSwapV5.OneSwap({tokenIn: WETHAddress, tokenOut: AUTO, relativeAmounts: relativeAmounts});
+    AutoSwapV5.RelativeAmount[] memory relativeAmounts =
+      new AutoSwapV5.RelativeAmount[](1);
+    relativeAmounts[0] =
+      AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
+    swaps[0] = AutoSwapV5.OneSwap({
+      tokenIn: WETHAddress,
+      tokenOut: AUTO,
+      relativeAmounts: relativeAmounts
+    });
 
     ERC20(WETHAddress).approve(address(autoswap), amountIn);
 
     uint256 balanceBefore = ERC20(AUTO).balanceOf(address(this));
-    uint256 outAmount = autoswap.swap(WETHAddress, AUTO, amountIn, 1, dexes, swaps, address(this), block.timestamp);
+    uint256 outAmount = autoswap.swap(
+      WETHAddress,
+      AUTO,
+      amountIn,
+      1,
+      dexes,
+      swaps,
+      address(this),
+      block.timestamp
+    );
 
     assertEq(outAmount, ERC20(AUTO).balanceOf(address(this)) - balanceBefore);
   }
@@ -119,17 +151,31 @@ contract AutoswapTest is Test {
     dexes[0] = factoryAddress;
 
     AutoSwapV5.OneSwap[] memory swaps = new AutoSwapV5.OneSwap[](2);
-    AutoSwapV5.RelativeAmount[] memory relativeAmounts0 = new AutoSwapV5.RelativeAmount[](1);
-    AutoSwapV5.RelativeAmount[] memory relativeAmounts1 = new AutoSwapV5.RelativeAmount[](1);
-    relativeAmounts0[0] = AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
-    relativeAmounts1[0] = AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
-    swaps[0] = AutoSwapV5.OneSwap({tokenIn: CAKE, tokenOut: WETHAddress, relativeAmounts: relativeAmounts0});
-    swaps[1] = AutoSwapV5.OneSwap({tokenIn: WETHAddress, tokenOut: AUTO, relativeAmounts: relativeAmounts1});
+    AutoSwapV5.RelativeAmount[] memory relativeAmounts0 =
+      new AutoSwapV5.RelativeAmount[](1);
+    AutoSwapV5.RelativeAmount[] memory relativeAmounts1 =
+      new AutoSwapV5.RelativeAmount[](1);
+    relativeAmounts0[0] =
+      AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
+    relativeAmounts1[0] =
+      AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
+    swaps[0] = AutoSwapV5.OneSwap({
+      tokenIn: CAKE,
+      tokenOut: WETHAddress,
+      relativeAmounts: relativeAmounts0
+    });
+    swaps[1] = AutoSwapV5.OneSwap({
+      tokenIn: WETHAddress,
+      tokenOut: AUTO,
+      relativeAmounts: relativeAmounts1
+    });
 
     ERC20(CAKE).approve(address(autoswap), amountIn);
 
     uint256 balanceBefore = ERC20(AUTO).balanceOf(address(this));
-    uint256 outAmount = autoswap.swap(CAKE, AUTO, amountIn, 1, dexes, swaps, address(this), block.timestamp);
+    uint256 outAmount = autoswap.swap(
+      CAKE, AUTO, amountIn, 1, dexes, swaps, address(this), block.timestamp
+    );
 
     assertEq(outAmount, ERC20(AUTO).balanceOf(address(this)) - balanceBefore);
   }
@@ -155,15 +201,31 @@ contract AutoswapTest is Test {
     dexes[1] = factoryAddress1;
 
     AutoSwapV5.OneSwap[] memory swaps = new AutoSwapV5.OneSwap[](1);
-    AutoSwapV5.RelativeAmount[] memory relativeAmounts = new AutoSwapV5.RelativeAmount[](2);
-    relativeAmounts[0] = AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 5e7, data: ""});
-    relativeAmounts[0] = AutoSwapV5.RelativeAmount({dexIndex: 1, amount: 5e7, data: ""});
-    swaps[0] = AutoSwapV5.OneSwap({tokenIn: WETHAddress, tokenOut: AUTO, relativeAmounts: relativeAmounts});
+    AutoSwapV5.RelativeAmount[] memory relativeAmounts =
+      new AutoSwapV5.RelativeAmount[](2);
+    relativeAmounts[0] =
+      AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 5e7, data: ""});
+    relativeAmounts[0] =
+      AutoSwapV5.RelativeAmount({dexIndex: 1, amount: 5e7, data: ""});
+    swaps[0] = AutoSwapV5.OneSwap({
+      tokenIn: WETHAddress,
+      tokenOut: AUTO,
+      relativeAmounts: relativeAmounts
+    });
 
     ERC20(WETHAddress).approve(address(autoswap), amountIn);
 
     uint256 balanceBefore = ERC20(AUTO).balanceOf(address(this));
-    uint256 outAmount = autoswap.swap(WETHAddress, AUTO, amountIn, 1, dexes, swaps, address(this), block.timestamp);
+    uint256 outAmount = autoswap.swap(
+      WETHAddress,
+      AUTO,
+      amountIn,
+      1,
+      dexes,
+      swaps,
+      address(this),
+      block.timestamp
+    );
 
     assertEq(outAmount, ERC20(AUTO).balanceOf(address(this)) - balanceBefore);
   }
@@ -180,9 +242,15 @@ contract AutoswapTest is Test {
     dexes[0] = factoryAddress;
 
     AutoSwapV5.OneSwap[] memory swapsToBase = new AutoSwapV5.OneSwap[](1);
-    AutoSwapV5.RelativeAmount[] memory relativeAmounts = new AutoSwapV5.RelativeAmount[](1);
-    relativeAmounts[0] = AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
-    swapsToBase[0] = AutoSwapV5.OneSwap({tokenIn: CAKE, tokenOut: WETHAddress, relativeAmounts: relativeAmounts});
+    AutoSwapV5.RelativeAmount[] memory relativeAmounts =
+      new AutoSwapV5.RelativeAmount[](1);
+    relativeAmounts[0] =
+      AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
+    swapsToBase[0] = AutoSwapV5.OneSwap({
+      tokenIn: CAKE,
+      tokenOut: WETHAddress,
+      relativeAmounts: relativeAmounts
+    });
 
     ERC20(CAKE).approve(address(autoswap), amountIn);
 
@@ -191,14 +259,23 @@ contract AutoswapTest is Test {
       CAKE,
       amountIn,
       dexes,
-      AutoSwapV5.LP1SwapOptions({base: WETHAddress, token: AUTO, amountOutMin0: 1, amountOutMin1: 1, swapsToBase: swapsToBase}),
+      AutoSwapV5.LP1SwapOptions({
+        base: WETHAddress,
+        token: AUTO,
+        amountOutMin0: 1,
+        amountOutMin1: 1,
+        swapsToBase: swapsToBase
+      }),
       block.timestamp
     );
 
     // assertEq(outAmount, ERC20(AUTO).balanceOf(address(this)) - balanceBefore);
   }
 
-  function testSwapToLP1FromETH(uint96 amountIn) public returns (uint256 outAmount) {
+  function testSwapToLP1FromETH(uint96 amountIn)
+    public
+    returns (uint256 outAmount)
+  {
     vm.assume(amountIn > 0.1 ether);
 
     address[] memory dexes = new address[](1);
@@ -209,7 +286,13 @@ contract AutoswapTest is Test {
     // uint256 balanceBefore = ERC20(AUTO).balanceOf(address(this));
     outAmount = autoswap.swapToLP1FromETH{value: amountIn}(
       dexes,
-      AutoSwapV5.LP1SwapOptions({base: WETHAddress, token: AUTO, amountOutMin0: 1, amountOutMin1: 1, swapsToBase: noSwaps}),
+      AutoSwapV5.LP1SwapOptions({
+        base: WETHAddress,
+        token: AUTO,
+        amountOutMin0: 1,
+        amountOutMin1: 1,
+        swapsToBase: noSwaps
+      }),
       block.timestamp
     );
 

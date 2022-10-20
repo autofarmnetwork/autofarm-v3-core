@@ -5,7 +5,10 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Authority} from "solmate/auth/Auth.sol";
 import {StratX4} from "../../src/StratX4.sol";
-import {FlippedUint256, FlippedUint256Lib} from "../../src/libraries/FlippedUint.sol";
+import {
+  FlippedUint256,
+  FlippedUint256Lib
+} from "../../src/libraries/FlippedUint.sol";
 
 error CallToUnmockedFunction(string functionName);
 
@@ -16,12 +19,9 @@ contract MockStrat is StratX4 {
   event FarmWithdraw(uint256 amount);
   event FarmHarvest();
 
-  constructor(
-    address _asset,
-    address _feesController,
-    uint256 _feeRate,
-    Authority _authority
-  ) StratX4(_asset, _feesController, _feeRate, _authority) {}
+  constructor(address _asset, address _feesController, Authority _authority)
+    StratX4(_asset, _feesController, _authority)
+  {}
 
   // Farming mechanism are disabled for tests
   function _farm(uint256 amount) internal override {
@@ -39,7 +39,12 @@ contract MockStrat is StratX4 {
     emit FarmHarvest();
   }
 
-  function compound(address earnedAddress, uint256 earnedAmount) internal view override returns (uint256) {
+  function compound(address earnedAddress, uint256 earnedAmount)
+    internal
+    view
+    override
+    returns (uint256)
+  {
     return this.mock__compound(earnedAddress, earnedAmount);
   }
 
@@ -48,17 +53,16 @@ contract MockStrat is StratX4 {
   }
 
   // Expose internal functions for testing
-  function public__handleFees(address earnedAddress) public returns (uint256, uint256) {
+  function public__handleFees(address earnedAddress)
+    public
+    returns (uint256, uint256)
+  {
     return getEarnedAmountAfterFee(earnedAddress);
   }
 
   function public__vestProfit(uint256 profit) public {
     _vestProfit(profit);
   }
-
-  // Should return array
-  // or remove completely
-  function pendingRewards() public view override returns (uint256) {}
 
   function lockedAssets() internal pure override returns (uint256) {
     return 0;

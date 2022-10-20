@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {MultiRolesAuthority, Authority} from "solmate/auth/authorities/MultiRolesAuthority.sol";
+import {
+  MultiRolesAuthority,
+  Authority
+} from "solmate/auth/authorities/MultiRolesAuthority.sol";
 
 import {StratX4} from "../StratX4.sol";
 import {AutofarmFeesController} from "../FeesController.sol";
@@ -27,21 +30,41 @@ library Configurer {
 
   function setupRoleCapacities(MultiRolesAuthority _authority) internal {
     // Keeper
-    _authority.setRoleCapability(uint8(Roles.Keeper), StratX4.earn.selector, true);
-    _authority.setRoleCapability(uint8(Roles.Keeper), StratX4.setFeeRate.selector, true);
-    _authority.setRoleCapability(uint8(Roles.Keeper), AutofarmFeesController.forwardFees.selector, true);
+    _authority.setRoleCapability(
+      uint8(Roles.Keeper), StratX4.earn.selector, true
+    );
+    _authority.setRoleCapability(
+      uint8(Roles.Keeper), StratX4.setFeeRate.selector, true
+    );
+    _authority.setRoleCapability(
+      uint8(Roles.Keeper), AutofarmFeesController.forwardFees.selector, true
+    );
 
     // Guardian
-    _authority.setRoleCapability(uint8(Roles.Guardian), StratX4.deprecate.selector, true);
+    _authority.setRoleCapability(
+      uint8(Roles.Guardian), StratX4.deprecate.selector, true
+    );
 
     // Dev
-    _authority.setRoleCapability(uint8(Roles.Dev), StratX4.undeprecate.selector, true);
-    _authority.setRoleCapability(uint8(Roles.Dev), StratX4.rescueOperation.selector, true);
-    _authority.setRoleCapability(uint8(Roles.Dev), AutofarmDeployer.deployStrat.selector, true);
+    _authority.setRoleCapability(
+      uint8(Roles.Dev), StratX4.undeprecate.selector, true
+    );
+    _authority.setRoleCapability(
+      uint8(Roles.Dev), StratX4.rescueOperation.selector, true
+    );
+    _authority.setRoleCapability(
+      uint8(Roles.Dev), AutofarmDeployer.deployStrat.selector, true
+    );
 
     // Gov
-    _authority.setRoleCapability(uint8(Roles.Gov), AutofarmFeesController.setTreasury.selector, true);
-    _authority.setRoleCapability(uint8(Roles.Gov), AutofarmFeesController.setSAV.selector, true);
-    _authority.setRoleCapability(uint8(Roles.Gov), AutofarmFeesController.setRewardCfg.selector, true);
+    _authority.setRoleCapability(
+      uint8(Roles.Gov), AutofarmFeesController.setTreasury.selector, true
+    );
+    _authority.setRoleCapability(
+      uint8(Roles.Gov), AutofarmFeesController.setSAV.selector, true
+    );
+    _authority.setRoleCapability(
+      uint8(Roles.Gov), AutofarmFeesController.setRewardCfg.selector, true
+    );
   }
 }

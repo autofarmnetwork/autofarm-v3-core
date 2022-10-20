@@ -6,7 +6,8 @@ import "forge-std/console2.sol";
 
 import "solmate/tokens/ERC20.sol";
 import {Authority} from "solmate/auth/Auth.sol";
-import {MultiRolesAuthority} from "solmate/auth/authorities/MultiRolesAuthority.sol";
+import {MultiRolesAuthority} from
+  "solmate/auth/authorities/MultiRolesAuthority.sol";
 import {Roles, Configurer, deployer, keeper} from "../src/auth/Auth.sol";
 import {AutofarmFeesController} from "../src/FeesController.sol";
 import "constants/tokens.sol";
@@ -70,9 +71,18 @@ contract StratX4FeesTest is Test {
   	0
   );
 
-    AutofarmFeesController.SwapConfig[] memory pathToAUTO = new AutofarmFeesController.SwapConfig[](2);
-    pathToAUTO[0] = AutofarmFeesController.SwapConfig({pair: BSW_BNB_PAIR, swapFee: biswapSwapFee, tokenOut: WBNB});
-    pathToAUTO[1] = AutofarmFeesController.SwapConfig({pair: WBNB_AUTO_PAIR, swapFee: biswapSwapFee, tokenOut: AUTO});
+    AutofarmFeesController.SwapConfig[] memory pathToAUTO =
+      new AutofarmFeesController.SwapConfig[](2);
+    pathToAUTO[0] = AutofarmFeesController.SwapConfig({
+      pair: BSW_BNB_PAIR,
+      swapFee: biswapSwapFee,
+      tokenOut: WBNB
+    });
+    pathToAUTO[1] = AutofarmFeesController.SwapConfig({
+      pair: WBNB_AUTO_PAIR,
+      swapFee: biswapSwapFee,
+      tokenOut: AUTO
+    });
     vm.prank(deployer);
     feesController.setRewardCfg(BSW, pathToAUTO);
   }
@@ -93,7 +103,15 @@ contract StratX4FeesTest is Test {
     vm.prank(keeper);
     feesController.forwardFees(ERC20(BSW), 0);
 
-    assertGt(ERC20(BSW).balanceOf(treasury), initialTreasuryBalance, "Treasury balance did not increase");
-    assertGt(ERC20(AUTO).balanceOf(feesController.SAV()), initialSAVBalance, "SAV balance did not increase");
+    assertGt(
+      ERC20(BSW).balanceOf(treasury),
+      initialTreasuryBalance,
+      "Treasury balance did not increase"
+    );
+    assertGt(
+      ERC20(AUTO).balanceOf(feesController.SAV()),
+      initialSAVBalance,
+      "SAV balance did not increase"
+    );
   }
 }

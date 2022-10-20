@@ -15,7 +15,7 @@ contract AutofarmVenusDistributor {
   mapping(bytes32 => bool) public claimed;
   address[] public assets;
 
-  event Claimed(address indexed claimer, address indexed receiver, address indexed asset, uint96 amount);
+  event Claimed(address indexed receiver, address indexed asset, uint96 amount);
 
   constructor(bytes32 _root, address payable _owner, address[] memory _assets) {
     root = _root;
@@ -23,9 +23,12 @@ contract AutofarmVenusDistributor {
     assets = _assets;
   }
 
-  function claim(address claimant, uint96[] calldata amounts, bytes32[] calldata proof) public {
-    require(amounts.length == assets.length, "AutofarmVenusDistributor: amounts and assets mismatch");
-    bytes32 leaf = keccak256(abi.encodePacked(claimant, amounts));
+  function claim(uint96[] calldata amounts, bytes32[] calldata proof) public {
+    require(
+      amounts.length == assets.length,
+      "AutofarmVenusDistributor: amounts and assets mismatch"
+    );
+    bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amounts));
 
     require(!claimed[leaf], "AutofarmVenusDistributor: Already claimed");
 
@@ -40,9 +43,9 @@ contract AutofarmVenusDistributor {
       }
       address asset = assets[i];
 
-      ERC20(asset).safeTransfer(claimant, amounts[i]);
+      ERC20(asset).safeTransfer(msg.sender, amounts[i]);
 
-      emit Claimed(msg.sender, claimant, asset, amounts[i]);
+      emit Claimed(msg.sender, asset, amounts[i]);
     }
   }
 

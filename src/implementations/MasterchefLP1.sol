@@ -3,55 +3,173 @@ pragma solidity ^0.8.13;
 
 import {SSTORE2Map} from "sstore2/SSTORE2Map.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {Authority} from "solmate/auth/Auth.sol";
+import {SSTORE2} from "solmate/utils/SSTORE2.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import "../farms/StratX4_Masterchef.sol";
-import {LP1Config, StratX4LibEarn} from "../libraries/StratX4LibEarn.sol";
-import {Oracle} from "../libraries/Oracle.sol";
+import {StratX4} from "../StratX4.sol";
+import {IMasterchefV2} from "../interfaces/IMasterchefV2.sol";
+import {
+  StratX4LibEarn,
+  ZapLiquidityConfig,
+  SwapRoute
+} from "../libraries/StratX4LibEarn.sol";
 
-struct EarnConfig {
-  address[] earnedAddresses;
-  LP1Config[] compoundConfigs;
+struct CompoundConfig {
+  SwapRoute swapRoute;
+  ZapLiquidityConfig zapLiquidityConfig;
 }
 
-struct Earn1Config {
-  address earnedAddress;
-  LP1Config compoundConfig;
-}
+contract StratX4MasterchefLP1 is StratX4 {
+  using SafeTransferLib for ERC20;
 
-contract Strat is StratX4_Masterchef {
-  address public immutable tokenBase;
-  address public immutable tokenOther;
+  address public immutable mainRewardToken;
+  uint256 public immutable pid; // pid of pool in farmContractAddress
+  address public immutable farmContractAddress;
+  address public immutable mainCompoundConfigPointer;
 
   constructor(
     address _asset,
-    address _tokenBase,
-    address _tokenOther,
+    address _feesController,
+    Authority _authority,
     address _farmContractAddress,
     uint256 _pid,
-    bytes4 _pendingRewardsSelector,
-    address _feesController,
-    uint256 _feeRate,
-    Authority _authority,
-    address[] memory _earnedAddresses,
-    LP1Config[] memory _compoundConfigs
-  )
-    StratX4_Masterchef(_asset, _farmContractAddress, _pid, _feesController, _feeRate, _pendingRewardsSelector, _authority)
-  {
-    tokenBase = _tokenBase;
-    tokenOther = _tokenOther;
-    for (uint256 i; i < _earnedAddresses.length; i++) {
-      SSTORE2Map.write(bytes32(uint256(uint160(_earnedAddresses[i]))), abi.encode(_compoundConfigs[i]));
-    }
+    address _mainRewardToken,
+    CompoundConfig memory _compoundInfo
+  ) StratX4(_asset, _feesController, _authority) {
+    pid = _pid;
+    farmContractAddress = _farmContractAddress;
+
+    mainRewardToken = _mainRewardToken;
+    mainCompoundConfigPointer = SSTORE2.write(
+      abi.encode(_compoundInfo.swapRoute, _compoundInfo.zapLiquidityConfig)
+    );
+
+    ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
   }
 
-  function harvest(address earnedAddress) internal override {}
+  // ERC4626 compatibility
 
-  function compound(address earnedAddress, uint256 earnedAmount) internal override returns (uint256 profit) {
-    Earn1Config memory _earnConfig =
-      abi.decode(SSTORE2Map.read(bytes32(uint256(uint160(earnedAddress)))), (Earn1Config));
+  function lockedAssets() internal view override returns (uint256) {
+    return IMasterchefV2(farmContractAddress).userInfo(pid, address(this))
+      .amount;
+  }
 
-    profit += StratX4LibEarn.compoundLP1(
-      asset, tokenBase, tokenOther, earnedAmount, ERC20(earnedAddress), _earnConfig.compoundConfig
+  // Farming
+
+  function _farm(uint256 wantAmt) internal override {
+    IMasterchefV2(farmContractAddress).deposit(pid, wantAmt);
+  }
+
+  function _unfarm(uint256 wantAmt) internal override {
+    IMasterchefV2(farmContractAddress).withdraw(pid, wantAmt);
+  }
+
+  function _emergencyUnfarm() internal override {
+    asset.safeApprove(farmContractAddress, 0);
+    IMasterchefV2(farmContractAddress).emergencyWithdraw(pid);
+  }
+
+  // Compounding
+
+  function harvestConfigKey(address earnedAddress)
+    internal
+    pure
+    returns (bytes32)
+  {
+    return bytes32(abi.encodePacked(uint160(earnedAddress), uint96(1)));
+  }
+
+  function earnConfigKey(address earnedAddress) internal pure returns (bytes32) {
+    return bytes32(abi.encodePacked(uint160(earnedAddress), uint96(2)));
+  }
+
+  function harvest(address earnedAddress) internal override {
+    if (earnedAddress == mainRewardToken) {
+      return _harvestMainReward();
+    }
+
+    require(
+      earnedAddress != address(0) && earnedAddress != address(asset)
+        && earnedAddress != farmContractAddress,
+      "Illegal earnedAddress"
     );
+
+    (address target, bytes memory data) = abi.decode(
+      SSTORE2Map.read(harvestConfigKey(earnedAddress)), (address, bytes)
+    );
+    require(
+      target != address(0) && target != address(asset)
+        && target != earnedAddress && target != farmContractAddress,
+      "Illegal call target"
+    );
+
+    (bool success,) = target.call(data);
+    require(success, "Failed to call target contract method");
+  }
+
+  function _harvestMainReward() internal {
+    IMasterchefV2(farmContractAddress).withdraw(pid, 0);
+  }
+
+  function compound(address earnedAddress, uint256 earnedAmount)
+    internal
+    override
+    returns (uint256)
+  {
+    if (earnedAddress == mainRewardToken) {
+      return compoundMainReward(earnedAmount);
+    }
+
+    (SwapRoute memory swapRoute, ZapLiquidityConfig memory zapLiquidityConfig) =
+    abi.decode(
+      SSTORE2Map.read(earnConfigKey(earnedAddress)),
+      (SwapRoute, ZapLiquidityConfig)
+    );
+    return StratX4LibEarn.swapExactTokensToLiquidity1(
+      earnedAddress, address(asset), earnedAmount, swapRoute, zapLiquidityConfig
+    );
+  }
+
+  function compoundMainReward(uint256 earnedAmount) internal returns (uint256) {
+    (SwapRoute memory swapRoute, ZapLiquidityConfig memory zapLiquidityConfig) =
+    abi.decode(
+      SSTORE2.read(mainCompoundConfigPointer), (SwapRoute, ZapLiquidityConfig)
+    );
+
+    return StratX4LibEarn.swapExactTokensToLiquidity1(
+      mainRewardToken,
+      address(asset),
+      earnedAmount,
+      swapRoute,
+      zapLiquidityConfig
+    );
+  }
+
+  // Keeper methods
+
+  function addHarvestConfig(
+    address earnedAddress,
+    address target,
+    bytes memory data
+  ) public whenNotPaused requiresAuth {
+    SSTORE2Map.write(harvestConfigKey(earnedAddress), abi.encode(target, data));
+  }
+
+  function addEarnConfig(
+    address earnedAddress,
+    SwapRoute memory swapRoute,
+    ZapLiquidityConfig memory zapLiquidityConfig
+  ) public whenNotPaused requiresAuth {
+    SSTORE2Map.write(
+      earnConfigKey(earnedAddress), abi.encode(swapRoute, zapLiquidityConfig)
+    );
+  }
+
+  // Farm allowance should be unlikely to run out during the Strat's lifetime
+  // given that the asset's fiat value per wei is within reasonable range
+  // but if it does, it can be reset here
+  function resetFarmAllowance() public requiresAuth whenNotPaused {
+    asset.safeApprove(farmContractAddress, type(uint256).max);
   }
 }

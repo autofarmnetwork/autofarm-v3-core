@@ -32,7 +32,9 @@ contract SingleAUTOVault is ERC4626 {
 
   event Earn(uint256 assetsIncrease);
 
-  constructor(address _feesController) ERC4626(ERC20(AUTOv2), "Single AUTO Vault", "AUTOSTRAT") {
+  constructor(address _feesController)
+    ERC4626(ERC20(AUTOv2), "Single AUTO Vault", "AUTOSTRAT")
+  {
     feesController = _feesController;
   }
 
@@ -52,25 +54,43 @@ contract SingleAUTOVault is ERC4626 {
     if (blocksSinceLastEarn >= _profitVestingPeriod) {
       return 0;
     }
-    return profitsVesting.mulDivUp(_profitVestingPeriod - blocksSinceLastEarn, _profitVestingPeriod);
+    return profitsVesting.mulDivUp(
+      _profitVestingPeriod - blocksSinceLastEarn, _profitVestingPeriod
+    );
   }
 
-  function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
+  function deposit(uint256 assets, address receiver)
+    public
+    override
+    returns (uint256 shares)
+  {
     shares = super.deposit(assets, receiver);
     depositLockedUntil[receiver] = block.timestamp + LOCK_PERIOD;
   }
 
-  function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
+  function mint(uint256 shares, address receiver)
+    public
+    override
+    returns (uint256 assets)
+  {
     assets = super.mint(shares, receiver);
     depositLockedUntil[receiver] = block.timestamp + LOCK_PERIOD;
   }
 
-  function withdraw(uint256 assets, address owner, address receiver) public override returns (uint256 shares) {
+  function withdraw(uint256 assets, address owner, address receiver)
+    public
+    override
+    returns (uint256 shares)
+  {
     require(depositLockedUntil[owner] < block.timestamp);
     shares = super.withdraw(assets, owner, receiver);
   }
 
-  function redeem(uint256 shares, address owner, address receiver) public override returns (uint256 assets) {
+  function redeem(uint256 shares, address owner, address receiver)
+    public
+    override
+    returns (uint256 assets)
+  {
     require(depositLockedUntil[owner] < block.timestamp);
     assets = super.redeem(shares, owner, receiver);
   }
@@ -108,6 +128,8 @@ contract SingleAUTOVault is ERC4626 {
       return;
     }
 
-    profitsVesting = (prevVestingEnd - block.number).mulDivUp(profitsVesting, profitVestingPeriod) + profit;
+    profitsVesting = (prevVestingEnd - block.number).mulDivUp(
+      profitsVesting, profitVestingPeriod
+    ) + profit;
   }
 }
