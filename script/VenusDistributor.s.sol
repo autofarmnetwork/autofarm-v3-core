@@ -22,7 +22,7 @@ contract VenusDistributionDeploymentScript is Script {
     vm.startBroadcast();
 
     AutofarmVenusDistributor distributor = new AutofarmVenusDistributor(
-   	hex'06ee3bc42bc60fdd242b1c681b7c2a67175b5684b90e24a56dec8a36832bbcb8',
+   	hex'6e595658f66ed2f89bcec957e459dc474d34bd2ff7c27f1a2d76ece8aaa3b047',
    	payable(0xF482404f0Ee4bbC780199b2995A43882a8595adA),
    	assets
     );
