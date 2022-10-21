@@ -16,6 +16,7 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
   uint256 public constant FEE_RATE_PRECISION = 1e18;
 
+  address public immutable farmContractAddress;
   address public immutable feesController;
   uint96 public immutable creationBlockNumber;
   mapping(address => FlippedUint256) public feesCollectable;
@@ -42,15 +43,18 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     uint160 amount;
   }
 
-  constructor(address _asset, address _feesController, Authority _authority)
+  constructor(address _asset, address _farmContractAddress, address _feesController, Authority _authority)
     ERC4626(ERC20(_asset), "Autofarm Strategy", "AF-Strat")
     Auth(address(0), _authority)
   {
+    farmContractAddress = _farmContractAddress;
     feesController = _feesController;
 
     uint96 _creationBlockNumber = uint96(block.number);
     profitVesting = ProfitVesting({lastEarnBlock: _creationBlockNumber, amount: 0});
     creationBlockNumber = _creationBlockNumber;
+
+    ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
   }
 
   ///// ERC4626 compatibility /////
@@ -231,11 +235,20 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
   function deprecate() public whenNotPaused requiresAuth {
     _emergencyUnfarm();
     _pause();
+    asset.safeApprove(farmContractAddress, 0);
   }
 
   function undeprecate() public whenPaused requiresAuth {
     _unpause();
+    asset.safeApprove(farmContractAddress, type(uint256).max);
     _farm(asset.balanceOf(address(this)));
+  }
+
+  // Farm allowance should be unlikely to run out during the Strat's lifetime
+  // given that the asset's fiat value per wei is within reasonable range
+  // but if it does, it can be reset here
+  function resetFarmAllowance() public requiresAuth whenNotPaused {
+    asset.safeApprove(farmContractAddress, type(uint256).max);
   }
 
   // Emergency calls for funds recovery

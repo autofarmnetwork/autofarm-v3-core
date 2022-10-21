@@ -44,6 +44,7 @@ contract StratX4Test is Test {
     user = makeAddr("user");
     strat = new MockStrat(
       address(asset),
+      makeAddr("farm"),
       feesController,
       authority
     );

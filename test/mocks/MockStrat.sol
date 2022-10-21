@@ -19,8 +19,8 @@ contract MockStrat is StratX4 {
   event FarmWithdraw(uint256 amount);
   event FarmHarvest();
 
-  constructor(address _asset, address _feesController, Authority _authority)
-    StratX4(_asset, _feesController, _authority)
+  constructor(address _asset, address _farmContractAddress, address _feesController, Authority _authority)
+    StratX4(_asset, _farmContractAddress, _feesController, _authority)
   {}
 
   // Farming mechanism are disabled for tests

@@ -20,7 +20,6 @@ contract StratX4MasterchefLP1 is StratX4 {
 
   address public immutable mainRewardToken;
   uint256 public immutable pid; // pid of pool in farmContractAddress
-  address public immutable farmContractAddress;
   address public immutable mainCompoundConfigPointer;
 
   constructor(
@@ -32,11 +31,8 @@ contract StratX4MasterchefLP1 is StratX4 {
     address _mainRewardToken,
     SwapRoute memory _swapRoute,
     ZapLiquidityConfig memory _zapLiquidityConfig
-  ) StratX4(_asset, _feesController, _authority) {
+  ) StratX4(_asset, _farmContractAddress, _feesController, _authority) {
     pid = _pid;
-    farmContractAddress = _farmContractAddress;
-
-    ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
 
     mainRewardToken = _mainRewardToken;
     mainCompoundConfigPointer = SSTORE2.write(
@@ -62,7 +58,6 @@ contract StratX4MasterchefLP1 is StratX4 {
   }
 
   function _emergencyUnfarm() internal override {
-    asset.safeApprove(farmContractAddress, 0);
     IMasterchefV2(farmContractAddress).emergencyWithdraw(pid);
   }
 
@@ -181,12 +176,5 @@ contract StratX4MasterchefLP1 is StratX4 {
     SSTORE2Map.write(
       earnConfigKey(earnedAddress), abi.encode(swapRoute, zapLiquidityConfig)
     );
-  }
-
-  // Farm allowance should be unlikely to run out during the Strat's lifetime
-  // given that the asset's fiat value per wei is within reasonable range
-  // but if it does, it can be reset here
-  function resetFarmAllowance() public requiresAuth whenNotPaused {
-    asset.safeApprove(farmContractAddress, type(uint256).max);
   }
 }
