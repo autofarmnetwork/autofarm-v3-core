@@ -17,6 +17,7 @@ contract MockStrat is StratX4 {
 
   event FarmDeposit(uint256 amount);
   event FarmWithdraw(uint256 amount);
+  event FarmEmergencyWithdraw();
   event FarmHarvest();
 
   constructor(address _asset, address _farmContractAddress, address _feesController, Authority _authority)
@@ -32,7 +33,9 @@ contract MockStrat is StratX4 {
     emit FarmWithdraw(amount);
   }
 
-  function _emergencyUnfarm() internal override {}
+  function _emergencyUnfarm() internal override {
+    emit FarmEmergencyWithdraw();
+  }
 
   // Compounding mechanism should be simulated by the tests
   function harvest(address) internal override {

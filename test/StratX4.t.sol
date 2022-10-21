@@ -28,6 +28,7 @@ contract StratX4Test is Test {
   event FeeSetAside(address earnedAddress, uint256 amount);
   event FarmDeposit(uint256 amount);
   event FarmWithdraw(uint256 amount);
+  event FarmEmergencyWithdraw();
   event FarmHarvest();
   event Earn(
     address indexed earnedAddress,
@@ -277,6 +278,29 @@ contract StratX4Test is Test {
       prevTotalAssets + totalVesting,
       "totalAssets should stay constant after vesting"
     );
+  }
+
+  function testDeprecate() public {
+    assertGt(ERC20(asset).allowance(address(strat), address(strat.farmContractAddress())), 0);
+
+    vm.expectEmit(false, false, false, true, address(strat));
+    emit FarmEmergencyWithdraw();
+
+    strat.deprecate();
+    assertEq(ERC20(asset).allowance(address(strat), address(strat.farmContractAddress())), 0);
+  }
+
+  function testUndeprecate() public {
+    strat.deprecate();
+
+    uint256 assets = 1 ether;
+    deal(address(asset), address(strat), assets);
+
+    vm.expectEmit(false, false, false, true, address(strat));
+    emit FarmDeposit(assets);
+
+    strat.undeprecate();
+    assertEq(ERC20(asset).allowance(address(strat), address(strat.farmContractAddress())), type(uint256).max);
   }
 
   function testRescueOperationWhenNotDeprecated() public {
