@@ -15,11 +15,6 @@ import {
   SwapRoute
 } from "../libraries/StratX4LibEarn.sol";
 
-struct CompoundConfig {
-  SwapRoute swapRoute;
-  ZapLiquidityConfig zapLiquidityConfig;
-}
-
 contract StratX4MasterchefLP1 is StratX4 {
   using SafeTransferLib for ERC20;
 
@@ -35,17 +30,18 @@ contract StratX4MasterchefLP1 is StratX4 {
     address _farmContractAddress,
     uint256 _pid,
     address _mainRewardToken,
-    CompoundConfig memory _compoundInfo
+    SwapRoute memory _swapRoute,
+    ZapLiquidityConfig memory _zapLiquidityConfig
   ) StratX4(_asset, _feesController, _authority) {
     pid = _pid;
     farmContractAddress = _farmContractAddress;
 
+    ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
+
     mainRewardToken = _mainRewardToken;
     mainCompoundConfigPointer = SSTORE2.write(
-      abi.encode(_compoundInfo.swapRoute, _compoundInfo.zapLiquidityConfig)
+      abi.encode(_swapRoute, _zapLiquidityConfig)
     );
-
-    ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
   }
 
   // ERC4626 compatibility
@@ -88,12 +84,6 @@ contract StratX4MasterchefLP1 is StratX4 {
     if (earnedAddress == mainRewardToken) {
       return _harvestMainReward();
     }
-
-    require(
-      earnedAddress != address(0) && earnedAddress != address(asset)
-        && earnedAddress != farmContractAddress,
-      "Illegal earnedAddress"
-    );
 
     (address target, bytes memory data) = abi.decode(
       SSTORE2Map.read(harvestConfigKey(earnedAddress)), (address, bytes)
@@ -153,6 +143,24 @@ contract StratX4MasterchefLP1 is StratX4 {
     address target,
     bytes memory data
   ) public whenNotPaused requiresAuth {
+    require(
+      earnedAddress != address(0) &&
+      earnedAddress != address(this) &&
+      earnedAddress != address(asset) &&
+      earnedAddress != address(mainRewardToken) &&
+      earnedAddress != earnedAddress &&
+      earnedAddress != farmContractAddress,
+      "Illegal call target"
+    );
+    require(
+      target != address(0) &&
+      target != address(this) &&
+      target != address(asset) &&
+      target != address(mainRewardToken) &&
+      target != earnedAddress &&
+      target != farmContractAddress,
+      "Illegal call target"
+    );
     SSTORE2Map.write(harvestConfigKey(earnedAddress), abi.encode(target, data));
   }
 
@@ -161,6 +169,15 @@ contract StratX4MasterchefLP1 is StratX4 {
     SwapRoute memory swapRoute,
     ZapLiquidityConfig memory zapLiquidityConfig
   ) public whenNotPaused requiresAuth {
+    require(
+      earnedAddress != address(0) &&
+      earnedAddress != address(this) &&
+      earnedAddress != address(asset) &&
+      earnedAddress != address(mainRewardToken) &&
+      earnedAddress != farmContractAddress,
+      "Illegal call target"
+    );
+
     SSTORE2Map.write(
       earnConfigKey(earnedAddress), abi.encode(swapRoute, zapLiquidityConfig)
     );

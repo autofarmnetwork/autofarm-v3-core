@@ -13,8 +13,7 @@ import {MockERC20} from "../mocks/MockERC20.sol";
 import {MockAuthority} from "../mocks/MockAuthority.sol";
 import {IMasterchefV2} from "../../src/interfaces/IMasterchefV2.sol";
 import {
-  StratX4MasterchefLP1,
-  CompoundConfig
+  StratX4MasterchefLP1
 } from "../../src/implementations/MasterchefLP1.sol";
 import {
   IUniswapV2Factory,
@@ -109,10 +108,8 @@ contract TestBase is Test {
       makeAddr("farm"),
       0,
       address(tokenC),
-      CompoundConfig({
-        swapRoute: swapRoute,
-        zapLiquidityConfig: zapLiquidityConfig
-      })
+      swapRoute,
+      zapLiquidityConfig
     );
 
     deal(address(tokenA), address(this), 1 ether);
