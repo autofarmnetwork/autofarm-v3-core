@@ -9,10 +9,6 @@ import {Auth, Authority} from "solmate/auth/authorities/RolesAuthority.sol";
 import {Pausable} from "openzeppelin/security/Pausable.sol";
 import {FlippedUint256, FlippedUint256Lib} from "./libraries/FlippedUint.sol";
 
-error NothingEarnedAfterFees(
-  address earnedAddress, uint256 earnedAmount, uint256 feeCollectable
-);
-
 abstract contract StratX4 is ERC4626, Auth, Pausable {
   using SafeTransferLib for ERC20;
   using FixedPointMathLib for uint256;
@@ -21,7 +17,7 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
   uint256 public constant FEE_RATE_PRECISION = 1e18;
 
   address public immutable feesController;
-  uint96 public immutable creationBlock;
+  uint96 public immutable creationBlockNumber;
   mapping(address => FlippedUint256) public feesCollectable;
   uint256 public constant MAX_FEE_RATE = 1e17; // 10%
   uint256 public constant PROFIT_VESTING_PERIOD = 21600; // 6 hours
@@ -46,20 +42,15 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     uint160 amount;
   }
 
-  struct RescueCall {
-    address target;
-    bytes data;
-  }
-
   constructor(address _asset, address _feesController, Authority _authority)
     ERC4626(ERC20(_asset), "Autofarm Strategy", "AF-Strat")
     Auth(address(0), _authority)
   {
     feesController = _feesController;
 
-    uint96 _creationBlock = uint96(block.number);
-    profitVesting = ProfitVesting({lastEarnBlock: _creationBlock, amount: 0});
-    creationBlock = _creationBlock;
+    uint96 _creationBlockNumber = uint96(block.number);
+    profitVesting = ProfitVesting({lastEarnBlock: _creationBlockNumber, amount: 0});
+    creationBlockNumber = _creationBlockNumber;
   }
 
   ///// ERC4626 compatibility /////
@@ -127,11 +118,13 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
   {
     harvest(earnedAddress);
     (uint256 earnedAmount, uint256 fee) = getEarnedAmountAfterFee(earnedAddress);
+    require(earnedAmount > 1, "StratX4: Nothing earned after fees");
+
+    profit = compound(earnedAddress, earnedAmount);
+    require(profit > 1, "StratX4: Earn produces no profit");
 
     // Gas optimization: leave at least 1 wei in the Strat
-    profit = compound(earnedAddress, earnedAmount) - 1;
-
-    require(profit > 0, "StratX4: Earn produces no profit");
+    profit -= 1;
 
     _farm(profit);
     _vestProfit(profit);
@@ -164,13 +157,9 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
     if (_feeRate > 0) {
       fee = earnedAmount.mulDivUp(_feeRate, FEE_RATE_PRECISION);
+
       earnedAmount -= fee;
 
-      if (earnedAmount <= fee) {
-        revert NothingEarnedAfterFees(
-          earnedAddress, earnedAmount, _feeCollectable
-        );
-      }
       feesCollectable[earnedAddress] =
         FlippedUint256Lib.create(_feeCollectable + fee);
 
@@ -178,8 +167,12 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     }
   }
 
-  function minEarnedAmountToHarvest() public view returns (uint256) {
-    return FEE_RATE_PRECISION / feeRate;
+  function minEarnedAmountToHarvest() public view returns (uint256 minEarnedAmount) {
+    uint256 _feeRate = feeRate;
+
+    if (_feeRate > 0) {
+      minEarnedAmount = FEE_RATE_PRECISION / feeRate;
+    }
   }
 
   /* @earnbot
@@ -188,8 +181,9 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
    * Optimize for gas by leaving 1 wei in the Strat
    */
   function collectFees(address earnedAddress) public whenNotPaused requiresAuth {
-    uint256 amount = feesCollectable[earnedAddress].get() - 1;
-    require(amount > 0, "No fees collectable");
+    uint256 amount = feesCollectable[earnedAddress].get();
+    require(amount > 1, "No fees collectable");
+    amount -= 1;
     ERC20(earnedAddress).safeTransfer(feesController, amount);
     feesCollectable[earnedAddress] = FlippedUint256Lib.create(1);
     emit FeeCollected(earnedAddress, amount);
@@ -210,7 +204,7 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     uint256 vestingAmount = uint160(profit);
 
     // Carry over unvested profits
-    if (block.number < prevVestingEnd && block.number != creationBlock) {
+    if (block.number < prevVestingEnd && block.number != creationBlockNumber) {
       vestingAmount += profitVesting.amount.mulDivUp(
         prevVestingEnd - block.number, PROFIT_VESTING_PERIOD
       );
@@ -235,8 +229,8 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
   ///// DEV FUNCTIONALITIES /////
 
   function deprecate() public whenNotPaused requiresAuth {
-    _pause();
     _emergencyUnfarm();
+    _pause();
   }
 
   function undeprecate() public whenPaused requiresAuth {
@@ -244,24 +238,25 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     _farm(asset.balanceOf(address(this)));
   }
 
-  // Emergency calls for recovery
+  // Emergency calls for funds recovery
   // Use cases:
-  // - Refund by farm through different contract
-  // - Rewards on different external rewarder contract
-  function rescueOperation(RescueCall[] calldata calls)
+  // - Refund by farm through a reimbursement contract
+  function rescueOperation(address[] calldata targets, bytes[] calldata data)
     public
     requiresAuth
     whenPaused
   {
-    for (uint256 i; i < calls.length; i++) {
-      RescueCall calldata call = calls[i];
-      // Calls to the asset are disallowed
+    require(targets.length == data.length, "StratX4: targets data length mismatch");
+
+    for (uint256 i; i < targets.length; i++) {
       // Try to rescue the funds to this contract, and let people
       // withdraw from this contract
       require(
-        call.target != address(asset), "StratX4: rescue cannot call asset"
+        targets[i] != address(asset) &&
+        targets[i] != address(this),
+        "StratX4: Illegal target"
       );
-      (bool succeeded,) = call.target.call(call.data);
+      (bool succeeded,) = targets[i].call(data[i]);
       require(succeeded, "!succeeded");
     }
   }

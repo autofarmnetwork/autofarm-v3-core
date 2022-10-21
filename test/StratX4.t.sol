@@ -19,10 +19,11 @@ contract StratX4Test is Test {
   ERC20 public asset; // mock asset
   ERC20 public rewardToken; // mock asset
   // feesController
-  // mock Authority: owner = this test contract
+  // mock Authority: owner = user test contract
   Authority public authority;
   MockStrat public strat;
   address public feesController;
+  address public user;
 
   event FeeSetAside(address earnedAddress, uint256 amount);
   event FarmDeposit(uint256 amount);
@@ -40,6 +41,7 @@ contract StratX4Test is Test {
     rewardToken = new MockERC20();
     authority = new MockAuthority();
     feesController = makeAddr("feesController");
+    user = makeAddr("user");
     strat = new MockStrat(
       address(asset),
       feesController,
@@ -54,21 +56,53 @@ contract StratX4Test is Test {
     assertEq(strat.totalAssets(), 1 ether);
   }
 
-  function testDeposit(uint96 amount) public {
-    vm.assume(amount > 0);
-    deal(address(asset), address(this), amount);
+  function testDepositShouldFarm() public {
+    uint256 amount = 1;
+    deal(address(asset), address(user), amount);
+
+    vm.prank(user);
     asset.approve(address(strat), amount);
 
     vm.expectEmit(false, false, false, true, address(strat));
     emit FarmDeposit(amount);
 
-    strat.deposit(amount, address(this));
+    vm.prank(user);
+    strat.deposit(amount, address(user));
+  }
+
+  function testWithdrawShouldUnfarm() public {
+    uint256 amount = 1;
+    deal(address(asset), address(strat), amount);
+    deal(address(strat), address(user), amount);
+
+    vm.expectEmit(false, false, false, true, address(strat));
+    emit FarmWithdraw(amount);
+
+    vm.prank(user);
+    strat.withdraw(amount, address(user), address(user));
+  }
+
+  function testEarnNothingHarvested() public {
+    vm.expectRevert("StratX4: Nothing earned after fees");
+    strat.earn(address(rewardToken));
+  }
+
+  function testEarnNoProfit() public {
+    uint256 earnedAmount = strat.minEarnedAmountToHarvest() - 1;
+    deal(address(rewardToken), address(strat), earnedAmount);
+    vm.mockCall(
+      address(strat),
+      abi.encodeWithSelector(MockStrat.mock__compound.selector),
+      abi.encode(0)
+    );
+    vm.expectRevert("StratX4: Earn produces no profit");
+    strat.earn(address(rewardToken));
   }
 
   function testEarn(uint96 earnedAmount, uint96 profit) public {
     strat.debug__warmFeesCollectable(address(rewardToken));
     uint256 minHarvest = strat.minEarnedAmountToHarvest();
-    vm.assume(earnedAmount > minHarvest && profit > 1);
+    vm.assume(earnedAmount >= minHarvest && profit > 1);
 
     vm.expectEmit(false, false, false, true, address(strat));
     emit FarmHarvest();
@@ -89,7 +123,6 @@ contract StratX4Test is Test {
     strat.earn(address(rewardToken));
   }
 
-  // also Test when reward is the staked token
   function testHandleFees(uint96[] memory harvests) public {
     vm.assume(harvests.length > 0);
     uint256 totalHarvested;
@@ -243,5 +276,43 @@ contract StratX4Test is Test {
       prevTotalAssets + totalVesting,
       "totalAssets should stay constant after vesting"
     );
+  }
+
+  function testRescueOperationWhenNotDeprecated() public {
+    address[] memory targets = new address[](0);
+    bytes[] memory dataArr = new bytes[](0);
+
+    vm.expectRevert("Pausable: not paused");
+    strat.rescueOperation(targets, dataArr);
+  }
+
+  function testRescueOperation() public {
+    strat.deprecate();
+    address target = makeAddr("target");
+    bytes memory data = bytes("data");
+
+    address[] memory targets = new address[](1);
+    bytes[] memory dataArr = new bytes[](1);
+
+    targets[0] = target;
+    dataArr[0] = data;
+
+    vm.expectCall(target, data);
+    strat.rescueOperation(targets, dataArr);
+  }
+
+  function testRescueOperationIllegalAddress() public {
+    strat.deprecate();
+    address target = address(asset);
+    bytes memory data = abi.encodeCall(ERC20.transfer, (makeAddr("hacker"), 1 ether));
+
+    address[] memory targets = new address[](1);
+    bytes[] memory dataArr = new bytes[](1);
+
+    targets[0] = target;
+    dataArr[0] = data;
+
+    vm.expectRevert("StratX4: Illegal target");
+    strat.rescueOperation(targets, dataArr);
   }
 }
