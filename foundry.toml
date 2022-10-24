@@ -5,6 +5,7 @@ libs = ['lib']
 solc_version = '0.8.13'
 fs_permissions = [
   { access = "read", path = "./vaults-config/"},
+  { access = "read", path = "./config/"},
   { access = "read", path = "./uniswap-build/"}
 ]
 
@@ -14,6 +15,7 @@ tab_width = 2
 
 [rpc_endpoints]
 bsc = "${BSC_RPC_URL}"
+evmos ="${EVMOS_RPC_URL}"
 
 [etherscan]
 bsc = { key = "${BSC_ETHERSCAN_KEY}", chain = 56, url = "https://api.bscscan.com/api" }
