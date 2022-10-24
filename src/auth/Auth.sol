@@ -10,7 +10,6 @@ import {Auth} from "solmate/auth/Auth.sol";
 import {StratX4} from "../StratX4.sol";
 import {Keeper} from "../Keeper.sol";
 import {AutofarmFeesController} from "../FeesController.sol";
-import "forge-std/console2.sol";
 
 enum Roles {
   NoAuth,
