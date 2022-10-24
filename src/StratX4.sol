@@ -43,7 +43,12 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     uint160 amount;
   }
 
-  constructor(address _asset, address _farmContractAddress, address _feesController, Authority _authority)
+  constructor(
+    address _asset,
+    address _farmContractAddress,
+    address _feesController,
+    Authority _authority
+  )
     ERC4626(ERC20(_asset), "Autofarm Strategy", "AF-Strat")
     Auth(address(0), _authority)
   {
@@ -51,7 +56,8 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     feesController = _feesController;
 
     uint96 _creationBlockNumber = uint96(block.number);
-    profitVesting = ProfitVesting({lastEarnBlock: _creationBlockNumber, amount: 0});
+    profitVesting =
+      ProfitVesting({lastEarnBlock: _creationBlockNumber, amount: 0});
     creationBlockNumber = _creationBlockNumber;
 
     ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
@@ -114,18 +120,19 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
   ///// Compounding /////
 
-  function earn(address earnedAddress)
+  function earn(address earnedAddress, uint256 minAmountOut)
     public
     requiresAuth
     whenNotPaused
     returns (uint256 profit)
   {
+    require(minAmountOut > 0, "StratX4: minAmount Outmust be at least 1");
     harvest(earnedAddress);
     (uint256 earnedAmount, uint256 fee) = getEarnedAmountAfterFee(earnedAddress);
     require(earnedAmount > 1, "StratX4: Nothing earned after fees");
 
     profit = compound(earnedAddress, earnedAmount);
-    require(profit > 1, "StratX4: Earn produces no profit");
+    require(profit >= minAmountOut, "StratX4: Earn produces less than minAmountOut");
 
     // Gas optimization: leave at least 1 wei in the Strat
     profit -= 1;
@@ -171,7 +178,11 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     }
   }
 
-  function minEarnedAmountToHarvest() public view returns (uint256 minEarnedAmount) {
+  function minEarnedAmountToHarvest()
+    public
+    view
+    returns (uint256 minEarnedAmount)
+  {
     uint256 _feeRate = feeRate;
 
     if (_feeRate > 0) {
@@ -259,14 +270,15 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     requiresAuth
     whenPaused
   {
-    require(targets.length == data.length, "StratX4: targets data length mismatch");
+    require(
+      targets.length == data.length, "StratX4: targets data length mismatch"
+    );
 
     for (uint256 i; i < targets.length; i++) {
       // Try to rescue the funds to this contract, and let people
       // withdraw from this contract
       require(
-        targets[i] != address(asset) &&
-        targets[i] != address(this),
+        targets[i] != address(asset) && targets[i] != address(this),
         "StratX4: Illegal target"
       );
       (bool succeeded,) = targets[i].call(data[i]);

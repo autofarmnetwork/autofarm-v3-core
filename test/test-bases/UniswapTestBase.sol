@@ -36,8 +36,8 @@ abstract contract UniswapTestBase is Test {
     uint256 amountA,
     uint256 amountB,
     address to
-  ) internal {
-    address pair = IUniswapV2Factory(factory).getPair(tokenA, tokenB);
+  ) internal returns (address pair) {
+    pair = IUniswapV2Factory(factory).getPair(tokenA, tokenB);
     if (pair == address(0)) {
       pair = IUniswapV2Factory(factory).createPair(tokenA, tokenB);
     }

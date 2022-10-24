@@ -63,7 +63,7 @@ contract AUTORevenueVoteController {
       getTermVotingResult(currentTerm);
     require(highestVote > 0);
 
-    feesController.setPortionsByVote(burnRates[winningOption]);
+    feesController.setBurnPortion(burnRates[winningOption]);
   }
 
   function getTermVotingResult(uint256 _term)

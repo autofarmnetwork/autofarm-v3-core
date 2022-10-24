@@ -42,7 +42,6 @@ struct ZapLiquidityConfig {
   uint256 swapFee; // set to 0 if dynamic
 }
 
-// Biswap
 interface IUniswapV2PairDynamicFee {
   function swapFee() external view returns (uint32);
 }

@@ -7,8 +7,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SSTORE2} from "solmate/utils/SSTORE2.sol";
 
-import {Uniswap} from "./libraries/Uniswap.sol";
-import {SingleAUTOVault} from "./SAV.sol";
+import {StratX4LibEarn, SwapRoute} from "./libraries/StratX4LibEarn.sol";
 
 contract AutofarmFeesController is Auth {
   using SafeTransferLib for ERC20;
@@ -17,22 +16,10 @@ contract AutofarmFeesController is Auth {
   address public constant AUTOv2 = 0xa184088a740c695E156F91f5cC086a06bb78b827;
   address public treasury;
   address public SAV;
-  address public votingController;
   uint8 public portionToPlatform;
   // portion to remaining fees after platform fees
   uint8 public portionToAUTOBurn;
   mapping(address => address) public rewardCfgPointers;
-
-  struct RewardCfg {
-    bool initialized;
-    SwapConfig[] pathToAUTO;
-  }
-
-  struct SwapConfig {
-    address pair;
-    uint256 swapFee; // can change, make sure synced
-    address tokenOut;
-  }
 
   event FeeDistribution(
     address indexed earnedAddress,
@@ -44,12 +31,12 @@ contract AutofarmFeesController is Auth {
   constructor(
     Authority _authority,
     address _treasury,
-    address _votingController,
+    address _sav,
     uint8 _portionToPlatform,
     uint8 _portionToAUTOBurn
   ) Auth(address(0), _authority) {
     treasury = _treasury;
-    votingController = _votingController;
+    SAV = _sav;
     portionToPlatform = _portionToPlatform;
     portionToAUTOBurn = _portionToAUTOBurn;
   }
@@ -60,14 +47,14 @@ contract AutofarmFeesController is Auth {
   ) public requiresAuth {
     require(rewards.length == minAmountOuts.length, "lengths must be equal");
     for (uint256 i; i < rewards.length;) {
-      forwardFees(ERC20(rewards[i]), minAmountOuts[i]);
+      forwardFees(rewards[i], minAmountOuts[i]);
       unchecked {
         i++;
       }
     }
   }
 
-  function forwardFees(ERC20 earnedAddress, uint256 minAUTOOut)
+  function forwardFees(address earnedAddress, uint256 minAUTOOut)
     public
     requiresAuth
   {
@@ -75,13 +62,10 @@ contract AutofarmFeesController is Auth {
     require(
       rewardCfgPointer != address(0), "FeesController: RewardCfg uninitialized"
     );
-    RewardCfg memory rewardCfg =
-      abi.decode(SSTORE2.read(rewardCfgPointer), (RewardCfg));
-    require(
-      rewardCfg.initialized, "FeesController: reward config not initialized"
-    );
+    SwapRoute memory swapRoute =
+      abi.decode(SSTORE2.read(rewardCfgPointer), (SwapRoute));
 
-    uint256 earnedAmt = earnedAddress.balanceOf(address(this));
+    uint256 earnedAmt = ERC20(earnedAddress).balanceOf(address(this));
 
     // Platform Fees
 
@@ -93,27 +77,16 @@ contract AutofarmFeesController is Auth {
     );
 
     earnedAmt -= feeToPlatform;
-    earnedAddress.safeTransfer(treasury, feeToPlatform);
+    ERC20(earnedAddress).safeTransfer(treasury, feeToPlatform);
 
-    // Buy AUTO then Burn / Send to SAV
-    ERC20(earnedAddress).safeTransfer(rewardCfg.pathToAUTO[0].pair, earnedAmt);
+    earnedAmt = StratX4LibEarn.swapExactTokensForTokens(
+      earnedAddress,
+      earnedAmt,
+      swapRoute.swapFees,
+      swapRoute.pairsPath,
+      swapRoute.tokensPath
+    );
 
-    for (uint256 i; i < rewardCfg.pathToAUTO.length;) {
-      SwapConfig memory swapConfig = rewardCfg.pathToAUTO[i];
-      earnedAmt = Uniswap._swap(
-        swapConfig.pair,
-        swapConfig.swapFee,
-        i == 0 ? address(earnedAddress) : rewardCfg.pathToAUTO[i - 1].tokenOut,
-        i == rewardCfg.pathToAUTO.length - 1 ? AUTOv2 : swapConfig.tokenOut,
-        earnedAmt,
-        i == rewardCfg.pathToAUTO.length - 1
-          ? address(this)
-          : rewardCfg.pathToAUTO[i + 1].pair
-      );
-      unchecked {
-        i++;
-      }
-    }
     require(earnedAmt >= minAUTOOut, "FeesController: AUTO min amount not met");
 
     uint256 burnAmt = earnedAmt.mulDivDown(portionToAUTOBurn, type(uint8).max);
@@ -121,40 +94,33 @@ contract AutofarmFeesController is Auth {
     earnedAmt -= burnAmt;
     ERC20(AUTOv2).safeTransfer(SAV, earnedAmt);
 
-    SingleAUTOVault(SAV).setProfitsVesting(earnedAmt);
-
-    emit FeeDistribution(
-      address(earnedAddress), feeToPlatform, burnAmt, earnedAmt
-      );
+    emit FeeDistribution(earnedAddress, feeToPlatform, burnAmt, earnedAmt);
   }
 
   /**
    * Setters
    */
 
-  function setRewardCfg(address reward, SwapConfig[] calldata pathToAUTO)
+  function setRewardCfg(address reward, SwapRoute calldata route)
     external
     requiresAuth
   {
-    require(pathToAUTO.length > 0);
-    require(pathToAUTO[pathToAUTO.length - 1].tokenOut == AUTOv2);
-    RewardCfg memory rewardCfg =
-      RewardCfg({pathToAUTO: pathToAUTO, initialized: true});
-    rewardCfgPointers[reward] = SSTORE2.write(abi.encode(rewardCfg));
+    require(route.pairsPath.length > 0);
+    require(route.tokensPath.length == route.pairsPath.length);
+    require(route.tokensPath.length == route.swapFees.length);
+    require(
+      route.tokensPath[route.tokensPath.length - 1]
+        == AUTOv2
+    );
+    rewardCfgPointers[reward] = SSTORE2.write(abi.encode(route));
   }
 
-  function setPortions(uint8 platform, uint8 burn) external requiresAuth {
+  function setPlatformPortion(uint8 platform) external requiresAuth {
     portionToPlatform = platform;
-    portionToAUTOBurn = burn;
   }
 
-  function setPortionsByVote(uint8 burn) external {
-    require(msg.sender == votingController);
+  function setBurnPortion(uint8 burn) external requiresAuth {
     portionToAUTOBurn = burn;
-  }
-
-  function setVotingController(address _votingController) external requiresAuth {
-    votingController = _votingController;
   }
 
   function setTreasury(address _treasury) external requiresAuth {

@@ -12,9 +12,7 @@ import {
 import {MockERC20} from "../mocks/MockERC20.sol";
 import {MockAuthority} from "../mocks/MockAuthority.sol";
 import {IMasterchefV2} from "../../src/interfaces/IMasterchefV2.sol";
-import {
-  StratX4MasterchefLP1
-} from "../../src/implementations/MasterchefLP1.sol";
+import {StratX4MasterchefLP1} from "../../src/implementations/MasterchefLP1.sol";
 import {
   IUniswapV2Factory,
   IUniswapV2Router01
@@ -168,6 +166,6 @@ contract TestBase is Test {
       ""
     );
     deal(address(tokenC), address(strat), amountIn);
-    strat.earn(address(tokenC));
+    strat.earn(address(tokenC), 1);
   }
 }

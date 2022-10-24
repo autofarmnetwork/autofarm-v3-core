@@ -39,7 +39,8 @@ library StratConfigJsonLib {
       ZapLiquidityConfig memory zapLiquidityConfig
     )
   {
-    StratConfigJson memory stratConfigJson = abi.decode(vm.parseJson(json), (StratConfigJson));
+    StratConfigJson memory stratConfigJson =
+      abi.decode(vm.parseJson(json), (StratConfigJson));
 
     asset = stratConfigJson.asset;
     farmContractAddress = stratConfigJson.farmContractAddress;
@@ -47,7 +48,8 @@ library StratConfigJsonLib {
     mainRewardToken = stratConfigJson.mainRewardToken;
 
     swapRoute = mapSwapRoute(stratConfigJson.swapRouteJson);
-    zapLiquidityConfig = mapZapLiquidityConfig(stratConfigJson.zapLiquidityConfigJson);
+    zapLiquidityConfig =
+      mapZapLiquidityConfig(stratConfigJson.zapLiquidityConfigJson);
   }
 
   function mapSwapRoute(SwapRouteJson memory swapRouteJson)
@@ -60,11 +62,9 @@ library StratConfigJsonLib {
     swapRoute.tokensPath = swapRouteJson.tokensPath;
   }
 
-  function mapZapLiquidityConfig(ZapLiquidityConfigJson memory zapLiquidityConfigJson)
-    internal
-    pure
-    returns (ZapLiquidityConfig memory zapLiquidityConfig)
-  {
+  function mapZapLiquidityConfig(
+    ZapLiquidityConfigJson memory zapLiquidityConfigJson
+  ) internal pure returns (ZapLiquidityConfig memory zapLiquidityConfig) {
     zapLiquidityConfig.swapFee = zapLiquidityConfigJson.swapFee;
     zapLiquidityConfig.lpSubtokenIn = zapLiquidityConfigJson.lpSubtokenIn;
     zapLiquidityConfig.lpSubtokenOut = zapLiquidityConfigJson.lpSubtokenOut;

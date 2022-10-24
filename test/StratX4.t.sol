@@ -16,10 +16,8 @@ import {StratX4} from "../src/StratX4.sol";
 contract StratX4Test is Test {
   using FixedPointMathLib for uint256;
 
-  ERC20 public asset; // mock asset
-  ERC20 public rewardToken; // mock asset
-  // feesController
-  // mock Authority: owner = user test contract
+  ERC20 public asset;
+  ERC20 public rewardToken;
   Authority public authority;
   MockStrat public strat;
   address public feesController;
@@ -86,7 +84,7 @@ contract StratX4Test is Test {
 
   function testEarnNothingHarvested() public {
     vm.expectRevert("StratX4: Nothing earned after fees");
-    strat.earn(address(rewardToken));
+    strat.earn(address(rewardToken), 1);
   }
 
   function testEarnNoProfit() public {
@@ -97,8 +95,8 @@ contract StratX4Test is Test {
       abi.encodeWithSelector(MockStrat.mock__compound.selector),
       abi.encode(0)
     );
-    vm.expectRevert("StratX4: Earn produces no profit");
-    strat.earn(address(rewardToken));
+    vm.expectRevert("StratX4: Earn produces less than minAmountOut");
+    strat.earn(address(rewardToken), 1);
   }
 
   function testEarn(uint96 earnedAmount, uint96 profit) public {
@@ -122,7 +120,7 @@ contract StratX4Test is Test {
       abi.encodeWithSelector(MockStrat.mock__compound.selector),
       abi.encode(profit)
     );
-    strat.earn(address(rewardToken));
+    strat.earn(address(rewardToken), 1);
   }
 
   function testHandleFees(uint96[] memory harvests) public {
@@ -281,13 +279,23 @@ contract StratX4Test is Test {
   }
 
   function testDeprecate() public {
-    assertGt(ERC20(asset).allowance(address(strat), address(strat.farmContractAddress())), 0);
+    assertGt(
+      ERC20(asset).allowance(
+        address(strat), address(strat.farmContractAddress())
+      ),
+      0
+    );
 
     vm.expectEmit(false, false, false, true, address(strat));
     emit FarmEmergencyWithdraw();
 
     strat.deprecate();
-    assertEq(ERC20(asset).allowance(address(strat), address(strat.farmContractAddress())), 0);
+    assertEq(
+      ERC20(asset).allowance(
+        address(strat), address(strat.farmContractAddress())
+      ),
+      0
+    );
   }
 
   function testUndeprecate() public {
@@ -300,7 +308,12 @@ contract StratX4Test is Test {
     emit FarmDeposit(assets);
 
     strat.undeprecate();
-    assertEq(ERC20(asset).allowance(address(strat), address(strat.farmContractAddress())), type(uint256).max);
+    assertEq(
+      ERC20(asset).allowance(
+        address(strat), address(strat.farmContractAddress())
+      ),
+      type(uint256).max
+    );
   }
 
   function testRescueOperationWhenNotDeprecated() public {
@@ -329,7 +342,8 @@ contract StratX4Test is Test {
   function testRescueOperationIllegalAddress() public {
     strat.deprecate();
     address target = address(asset);
-    bytes memory data = abi.encodeCall(ERC20.transfer, (makeAddr("hacker"), 1 ether));
+    bytes memory data =
+      abi.encodeCall(ERC20.transfer, (makeAddr("hacker"), 1 ether));
 
     address[] memory targets = new address[](1);
     bytes[] memory dataArr = new bytes[](1);

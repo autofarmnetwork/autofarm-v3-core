@@ -35,9 +35,8 @@ contract StratX4MasterchefLP1 is StratX4 {
     pid = _pid;
 
     mainRewardToken = _mainRewardToken;
-    mainCompoundConfigPointer = SSTORE2.write(
-      abi.encode(_swapRoute, _zapLiquidityConfig)
-    );
+    mainCompoundConfigPointer =
+      SSTORE2.write(abi.encode(_swapRoute, _zapLiquidityConfig));
   }
 
   // ERC4626 compatibility
@@ -139,21 +138,16 @@ contract StratX4MasterchefLP1 is StratX4 {
     bytes memory data
   ) public whenNotPaused requiresAuth {
     require(
-      earnedAddress != address(0) &&
-      earnedAddress != address(this) &&
-      earnedAddress != address(asset) &&
-      earnedAddress != address(mainRewardToken) &&
-      earnedAddress != earnedAddress &&
-      earnedAddress != farmContractAddress,
+      earnedAddress != address(0) && earnedAddress != address(this)
+        && earnedAddress != address(asset)
+        && earnedAddress != address(mainRewardToken)
+        && earnedAddress != earnedAddress && earnedAddress != farmContractAddress,
       "Illegal call target"
     );
     require(
-      target != address(0) &&
-      target != address(this) &&
-      target != address(asset) &&
-      target != address(mainRewardToken) &&
-      target != earnedAddress &&
-      target != farmContractAddress,
+      target != address(0) && target != address(this)
+        && target != address(asset) && target != address(mainRewardToken)
+        && target != earnedAddress && target != farmContractAddress,
       "Illegal call target"
     );
     SSTORE2Map.write(harvestConfigKey(earnedAddress), abi.encode(target, data));
@@ -165,11 +159,10 @@ contract StratX4MasterchefLP1 is StratX4 {
     ZapLiquidityConfig memory zapLiquidityConfig
   ) public whenNotPaused requiresAuth {
     require(
-      earnedAddress != address(0) &&
-      earnedAddress != address(this) &&
-      earnedAddress != address(asset) &&
-      earnedAddress != address(mainRewardToken) &&
-      earnedAddress != farmContractAddress,
+      earnedAddress != address(0) && earnedAddress != address(this)
+        && earnedAddress != address(asset)
+        && earnedAddress != address(mainRewardToken)
+        && earnedAddress != farmContractAddress,
       "Illegal call target"
     );
 
