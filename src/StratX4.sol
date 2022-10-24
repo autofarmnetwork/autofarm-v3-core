@@ -132,7 +132,9 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     require(earnedAmount > 1, "StratX4: Nothing earned after fees");
 
     profit = compound(earnedAddress, earnedAmount);
-    require(profit >= minAmountOut, "StratX4: Earn produces less than minAmountOut");
+    require(
+      profit >= minAmountOut, "StratX4: Earn produces less than minAmountOut"
+    );
 
     // Gas optimization: leave at least 1 wei in the Strat
     profit -= 1;
@@ -195,8 +197,13 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
    * Should calc gas vs fees to decide when it is economical to collect fees
    * Optimize for gas by leaving 1 wei in the Strat
    */
-  function collectFees(address earnedAddress) public whenNotPaused requiresAuth {
-    uint256 amount = feesCollectable[earnedAddress].get();
+  function collectFees(address earnedAddress)
+    public
+    whenNotPaused
+    requiresAuth
+    returns (uint256 amount)
+  {
+    amount = feesCollectable[earnedAddress].get();
     require(amount > 1, "No fees collectable");
     amount -= 1;
     ERC20(earnedAddress).safeTransfer(feesController, amount);

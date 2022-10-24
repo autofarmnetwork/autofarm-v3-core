@@ -108,10 +108,7 @@ contract AutofarmFeesController is Auth {
     require(route.pairsPath.length > 0);
     require(route.tokensPath.length == route.pairsPath.length);
     require(route.tokensPath.length == route.swapFees.length);
-    require(
-      route.tokensPath[route.tokensPath.length - 1]
-        == AUTOv2
-    );
+    require(route.tokensPath[route.tokensPath.length - 1] == AUTOv2);
     rewardCfgPointers[reward] = SSTORE2.write(abi.encode(route));
   }
 
