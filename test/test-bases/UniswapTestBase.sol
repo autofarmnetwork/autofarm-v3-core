@@ -13,19 +13,11 @@ import {
 
 abstract contract UniswapTestBase is Test {
   IUniswapV2Factory public immutable factory;
-  IUniswapV2Router01 public immutable router;
 
   constructor() {
     factory = IUniswapV2Factory(
       deployCode(
         "./uniswap-build/UniswapV2Factory.json", abi.encode(address(this))
-      )
-    );
-
-    router = IUniswapV2Router01(
-      deployCode(
-        "./uniswap-build/UniswapV2Router02.json",
-        abi.encode(address(factory), makeAddr("WETH"))
       )
     );
   }

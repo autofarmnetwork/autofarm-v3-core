@@ -6,13 +6,22 @@ import {LibString} from "solmate/utils/LibString.sol";
 
 import {SwapRoute, ZapLiquidityConfig} from "../libraries/StratX4LibEarn.sol";
 
+struct EarnConfig {
+  address rewardToken;
+  SwapRoute swapRoute;
+  ZapLiquidityConfig zapLiquidityConfig;
+}
+
+struct EarnConfigJson {
+  address rewardToken;
+  SwapRouteJson swapRouteJson;
+  ZapLiquidityConfigJson zapLiquidityConfigJson;
+}
+
 struct StratConfigJson {
   address asset;
   address farmContractAddress;
-  address mainRewardToken;
   uint256 pid;
-  SwapRouteJson swapRouteJson;
-  ZapLiquidityConfigJson zapLiquidityConfigJson;
 }
 
 struct SwapRouteJson {
@@ -34,22 +43,26 @@ library StratConfigJsonLib {
       address asset,
       address farmContractAddress,
       uint256 pid,
-      address mainRewardToken,
-      SwapRoute memory swapRoute,
-      ZapLiquidityConfig memory zapLiquidityConfig
+      EarnConfig[] memory earnConfigs
     )
   {
     StratConfigJson memory stratConfigJson =
-      abi.decode(vm.parseJson(json), (StratConfigJson));
+      abi.decode(vm.parseJson(json, ".strat"), (StratConfigJson));
 
     asset = stratConfigJson.asset;
     farmContractAddress = stratConfigJson.farmContractAddress;
     pid = stratConfigJson.pid;
-    mainRewardToken = stratConfigJson.mainRewardToken;
 
-    swapRoute = mapSwapRoute(stratConfigJson.swapRouteJson);
-    zapLiquidityConfig =
-      mapZapLiquidityConfig(stratConfigJson.zapLiquidityConfigJson);
+    EarnConfigJson[] memory earnConfigsJson =
+      abi.decode(vm.parseJson(json, ".earnConfigs"), (EarnConfigJson[]));
+
+    earnConfigs = new EarnConfig[](earnConfigsJson.length);
+    for (uint256 i; i < earnConfigsJson.length; i++) {
+      earnConfigs[i].rewardToken = earnConfigsJson[i].rewardToken;
+      earnConfigs[i].swapRoute = mapSwapRoute(earnConfigsJson[i].swapRouteJson);
+      earnConfigs[i].zapLiquidityConfig =
+        mapZapLiquidityConfig(earnConfigsJson[i].zapLiquidityConfigJson);
+    }
   }
 
   function mapSwapRoute(SwapRouteJson memory swapRouteJson)

@@ -25,7 +25,7 @@ contract DeployAutofarm is Script {
 
     AutofarmAuthority auth =
       new AutofarmAuthority{salt: "autofarm-authority-v0"}(msg.sender);
-    setupAddrRoles(auth);
+    // setupAddrRoles(auth);
     AutofarmFeesController feesController =
     new AutofarmFeesController{salt: "autofarm-fees-v0"}(
       auth,
@@ -34,8 +34,9 @@ contract DeployAutofarm is Script {
       64,
       0
     );
-    Keeper keeper = new Keeper{salt: "autofarm-keeper-v0"}(address(feesController), auth);
-    auth.setUserRole(address(keeper), uint8(Roles.KeeperCaller), true);
+    Keeper keeper =
+      new Keeper{salt: "autofarm-keeper-v0"}(address(feesController), auth);
+    auth.setUserRole(address(keeper), uint8(Roles.Keeper), true);
     vm.stopBroadcast();
   }
 

@@ -8,6 +8,7 @@ import {
 import {Auth} from "solmate/auth/Auth.sol";
 
 import {StratX4} from "../StratX4.sol";
+import {StratX4Compounding} from "../StratX4Compounding.sol";
 import {Keeper} from "../Keeper.sol";
 import {AutofarmFeesController} from "../FeesController.sol";
 
@@ -43,6 +44,12 @@ contract AutofarmAuthority is MultiRolesAuthority {
     // Dev
     _setRoleCapability(uint8(Roles.Dev), StratX4.undeprecate.selector, true);
     _setRoleCapability(uint8(Roles.Dev), StratX4.rescueOperation.selector, true);
+    _setRoleCapability(
+      uint8(Roles.Dev), StratX4Compounding.addEarnConfig.selector, true
+    );
+    _setRoleCapability(
+      uint8(Roles.Dev), StratX4Compounding.addHarvestConfig.selector, true
+    );
 
     // Gov
     _setRoleCapability(

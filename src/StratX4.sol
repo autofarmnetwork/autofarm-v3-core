@@ -63,20 +63,32 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     ERC20(_asset).safeApprove(_farmContractAddress, type(uint256).max);
   }
 
+  function depositWithPermit(
+    uint256 assets,
+    address receiver,
+    uint256 deadline,
+    uint8 v,
+    bytes32 r,
+    bytes32 s
+  ) public {
+    asset.permit(msg.sender, address(this), assets, deadline, v, r, s);
+    deposit(assets, receiver);
+  }
+
   ///// ERC4626 compatibility /////
 
   // totalAssets is adjusted to vest earned profits over a vesting period
   // to prevent front-running and remove the need for an entrance fee
   function totalAssets() public view override returns (uint256 amount) {
-    amount = asset.balanceOf(address(this));
-
     if (!paused()) {
-      amount += lockedAssets();
+      amount = lockedAssets();
       uint256 _vestingProfit = vestingProfit();
       if (_vestingProfit > amount) {
         _vestingProfit = amount;
       }
       amount -= _vestingProfit;
+    } else {
+      amount = asset.balanceOf(address(this));
     }
   }
 
@@ -129,7 +141,9 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     require(minAmountOut > 0, "StratX4: minAmount Outmust be at least 1");
     harvest(earnedAddress);
     (uint256 earnedAmount, uint256 fee) = getEarnedAmountAfterFee(earnedAddress);
+
     require(earnedAmount > 1, "StratX4: Nothing earned after fees");
+    earnedAmount -= 1;
 
     profit = compound(earnedAddress, earnedAmount);
     require(
@@ -153,6 +167,17 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     virtual
     returns (uint256 profit);
 
+  // When earnedAddress == asset, and when the asset is somehow staked in this Strat instead of the farm
+  // this will have to be adjusted to exclude the balance of deposits
+  function getEarnedAmount(address earnedAddress, uint256 feeCollectable)
+    internal
+    view
+    virtual
+    returns (uint256)
+  {
+    return ERC20(earnedAddress).balanceOf(address(this)) - feeCollectable;
+  }
+
   function getEarnedAmountAfterFee(address earnedAddress)
     internal
     returns (uint256 earnedAmount, uint256 fee)
@@ -161,12 +186,7 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
     uint256 _feeCollectable = feesCollectable[earnedAddress].get();
 
-    // When earnedAddress == asset, and when the asset is somehow staked in this Strat instead of the farm
-    // this might reflect the wrong amount.
-    // Normally that would only happen in a paused strat,
-    // but it is possible for the farm to "push" the assets back to the Strat.
-    earnedAmount =
-      ERC20(earnedAddress).balanceOf(address(this)) - _feeCollectable;
+    earnedAmount = getEarnedAmount(earnedAddress, _feeCollectable);
 
     if (_feeRate > 0) {
       fee = earnedAmount.mulDivUp(_feeRate, FEE_RATE_PRECISION);
@@ -204,8 +224,7 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     returns (uint256 amount)
   {
     amount = feesCollectable[earnedAddress].get();
-    require(amount > 1, "No fees collectable");
-    amount -= 1;
+    require(amount > 0, "No fees collectable");
     ERC20(earnedAddress).safeTransfer(feesController, amount);
     feesCollectable[earnedAddress] = FlippedUint256Lib.create(1);
     emit FeeCollected(earnedAddress, amount);

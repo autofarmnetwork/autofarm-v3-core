@@ -22,6 +22,10 @@ contract StratX4Test is Test {
   MockStrat public strat;
   address public feesController;
   address public user;
+  uint256 public userPrivateKey = 0xBEEF;
+  bytes32 constant PERMIT_TYPEHASH = keccak256(
+    "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+  );
 
   event FeeSetAside(address earnedAddress, uint256 amount);
   event FarmDeposit(uint256 amount);
@@ -40,7 +44,7 @@ contract StratX4Test is Test {
     rewardToken = new MockERC20();
     authority = new MockAuthority();
     feesController = makeAddr("feesController");
-    user = makeAddr("user");
+    user = vm.addr(userPrivateKey);
     strat = new MockStrat(
       address(asset),
       makeAddr("farm"),
@@ -68,6 +72,34 @@ contract StratX4Test is Test {
 
     vm.prank(user);
     strat.deposit(amount, address(user));
+  }
+
+  function testDepositWithPermit() public {
+    uint256 amount = 1;
+    deal(address(asset), address(user), amount);
+
+    vm.prank(user);
+
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+      userPrivateKey,
+      keccak256(
+        abi.encodePacked(
+          "\x19\x01",
+          asset.DOMAIN_SEPARATOR(),
+          keccak256(
+            abi.encode(
+              PERMIT_TYPEHASH, user, address(strat), amount, 0, block.timestamp
+            )
+          )
+        )
+      )
+    );
+
+    vm.expectEmit(false, false, false, true, address(strat));
+    emit FarmDeposit(amount);
+
+    vm.prank(user);
+    strat.depositWithPermit(amount, address(user), block.timestamp, v, r, s);
   }
 
   function testWithdrawShouldUnfarm() public {

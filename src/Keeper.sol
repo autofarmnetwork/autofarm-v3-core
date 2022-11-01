@@ -20,14 +20,24 @@ contract Keeper is Auth {
     address[] calldata earnedAddresses,
     uint256[] calldata minAmountsOut
   ) external requiresAuth returns (uint256[] memory profits) {
-    require(strats.length == earnedAddresses.length);
+    require(
+      strats.length == earnedAddresses.length, "Input arrays length mismatch"
+    );
+    require(
+      strats.length == minAmountsOut.length, "Input arrays length mismatch"
+    );
+
+    profits = new uint256[](strats.length);
 
     for (uint256 i; i < strats.length;) {
       try StratX4(strats[i]).earn(earnedAddresses[i], minAmountsOut[i])
       returns (uint256 profit) {
         profits[i] = profit;
       } catch {}
-      i++;
+
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -36,6 +46,8 @@ contract Keeper is Auth {
     address[] calldata earnedAddresses
   ) external requiresAuth returns (uint256[] memory amounts) {
     require(strats.length == earnedAddresses.length);
+
+    amounts = new uint256[](strats.length);
 
     for (uint256 i; i < strats.length;) {
       try StratX4(strats[i]).collectFees(earnedAddresses[i]) returns (
