@@ -8,6 +8,8 @@ fs_permissions = [
   { access = "read", path = "./config/"},
   { access = "read", path = "./uniswap-build/"}
 ]
+optimizer = true
+optimizer_runs = 10_000
 
 [fmt]
 line_length = 80
