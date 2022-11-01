@@ -18,25 +18,16 @@ import {UniswapTestBase} from "../test-bases/UniswapTestBase.sol";
 contract MasterchefLP1Test is UniswapTestBase {
   address public asset;
 
-  ERC20 public tokenA;
-  ERC20 public tokenB;
-  ERC20 public tokenC;
-  ERC20 public tokenD;
+  ERC20 public tokenA = new MockERC20(); // asset.token0
+  ERC20 public tokenB = new MockERC20(); // asset.token1
+  ERC20 public tokenC = new MockERC20(); // reward token
 
   address public pairAC;
-  address public pairAD;
 
   StratX4MasterchefLP1 public strat;
 
   function setUp() public {
-    tokenA = new MockERC20();
-    tokenB = new MockERC20();
-    tokenC = new MockERC20();
-    tokenD = new MockERC20();
-    address pair = factory.createPair(address(tokenA), address(tokenB));
-    asset = pair;
-
-    addLiquidity(
+    asset = addLiquidity(
       address(tokenA),
       address(tokenB),
       1 ether, // amountTokenDesired
@@ -50,16 +41,6 @@ contract MasterchefLP1Test is UniswapTestBase {
       1 ether, // amountTokenDesired
       1 ether, // amountTokenDesired
       address(0) // to
-    );
-
-    deal(address(tokenC), address(this), type(uint256).max);
-    deal(address(tokenA), address(this), 1);
-    deal(address(tokenB), address(this), 1);
-    deal(asset, address(this), 1);
-    assertEq(
-      ERC20(asset).balanceOf(address(this)),
-      1,
-      "initial output balance should be 1"
     );
 
     uint256[] memory swapFees = new uint256[](1);
@@ -90,33 +71,6 @@ contract MasterchefLP1Test is UniswapTestBase {
       swapRoute,
       zapLiquidityConfig
     );
-
-    pairAD = addLiquidity(
-      address(tokenD),
-      address(tokenA),
-      1 ether, // amountTokenDesired
-      1 ether, // amountTokenDesired
-      address(0) // to
-    );
-
-    swapFees = new uint256[](1);
-    swapFees[0] = 9970;
-    pairsPath = new address[](1);
-    pairsPath[0] = pairAD;
-    tokensPath = new address[](1);
-    tokensPath[0] = address(tokenA);
-    swapRoute = SwapRoute({
-      swapFees: swapFees,
-      pairsPath: pairsPath,
-      tokensPath: tokensPath
-    });
-    zapLiquidityConfig = ZapLiquidityConfig({
-      swapFee: 9970,
-      lpSubtokenIn: address(tokenA),
-      lpSubtokenOut: address(tokenB)
-    });
-
-    strat.addEarnConfig(address(tokenD), abi.encode(swapRoute, zapLiquidityConfig));
   }
 
   function testEarn(uint96 amountIn) public {
@@ -133,21 +87,5 @@ contract MasterchefLP1Test is UniswapTestBase {
     );
     deal(address(tokenC), address(strat), amountIn);
     strat.earn(address(tokenC), 1);
-  }
-
-  function testEarnAdditionalRewards(uint96 amountIn) public {
-    vm.assume(amountIn > 1e4);
-    vm.mockCall(
-      strat.farmContractAddress(),
-      abi.encodeWithSelector(IMasterchefV2.withdraw.selector),
-      ""
-    );
-    vm.mockCall(
-      strat.farmContractAddress(),
-      abi.encodeWithSelector(IMasterchefV2.deposit.selector),
-      ""
-    );
-    deal(address(tokenD), address(strat), amountIn);
-    strat.earn(address(tokenD), 1);
   }
 }
