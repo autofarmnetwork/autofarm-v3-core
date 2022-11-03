@@ -1,0 +1,16 @@
+{
+  "strat": {
+    "asset": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+    "farmContractAddress": "0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8"
+  },
+  "earnConfigs": [
+    {
+      "swapRoute": {
+        "swapFees": [9970, 9980],
+        "pairsPath": ["0x7EB5D86FD78f3852a3e0e064f2842d45a3dB6EA2", "0x06Cd679121Ec37B0A2FD673D4976B09d81791856"],
+        "tokensPath": ["0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"]
+      },
+      "rewardToken": "0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63"
+    }
+  ]
+}
