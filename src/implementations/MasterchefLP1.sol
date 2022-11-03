@@ -45,8 +45,8 @@ contract StratX4MasterchefLP1 is StratX4Compounding {
   // ERC4626 compatibility
 
   function lockedAssets() internal view override returns (uint256) {
-    return IMasterchefV2(farmContractAddress).userInfo(pid, address(this))
-      .amount;
+    return
+      IMasterchefV2(farmContractAddress).userInfo(pid, address(this)).amount;
   }
 
   // Farming

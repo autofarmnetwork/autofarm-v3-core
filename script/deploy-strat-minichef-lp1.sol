@@ -59,10 +59,7 @@ contract DeployStrat is Script {
     for (uint256 i = 1; i < earnConfigs.length; i++) {
       strat.addEarnConfig(
         earnConfigs[i].rewardToken,
-        abi.encode(
-          earnConfigs[i].swapRoute,
-          earnConfigs[i].zapLiquidityConfig
-        )
+        abi.encode(earnConfigs[i].swapRoute, earnConfigs[i].zapLiquidityConfig)
       );
     }
   }
@@ -113,6 +110,5 @@ contract DeployStrat is Script {
     vm.prank(vm.envAddress("KEEPER_ADDRESS"));
     uint256 compoundedAssets = strat.earn(rewardToken, 1);
     assertGt(compoundedAssets, 0, "earn harvests less than expected harvest");
-  }
-*/
+  }*/
 }

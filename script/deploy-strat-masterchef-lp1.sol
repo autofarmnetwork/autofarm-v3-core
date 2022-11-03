@@ -69,10 +69,7 @@ contract DeployStrat is Script, Test {
     for (uint256 i = 1; i < earnConfigs.length; i++) {
       strat.addEarnConfig(
         earnConfigs[i].rewardToken,
-        abi.encode(
-          earnConfigs[i].swapRoute,
-          earnConfigs[i].zapLiquidityConfig
-        )
+        abi.encode(earnConfigs[i].swapRoute, earnConfigs[i].zapLiquidityConfig)
       );
     }
   }

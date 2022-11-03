@@ -27,7 +27,8 @@ abstract contract StratX4Compounding is StratX4 {
     bytes memory _mainCompoundConfigData
   ) StratX4(_asset, _farmContractAddress, _feesController, _authority) {
     mainRewardToken = _mainRewardToken;
-    compoundConfigPointers[_mainRewardToken] = SSTORE2.write(_mainCompoundConfigData);
+    compoundConfigPointers[_mainRewardToken] =
+      SSTORE2.write(_mainCompoundConfigData);
   }
 
   function _harvestMainReward() internal virtual;
@@ -99,23 +100,26 @@ abstract contract StratX4Compounding is StratX4 {
     bytes memory data
   ) public whenNotPaused requiresAuth {
     require(
-       earnedAddress != address(0) && checkTargetIsLegal(earnedAddress),
+      earnedAddress != address(0) && checkTargetIsLegal(earnedAddress),
       "Illegal earnedAddress"
     );
     require(
-       target != earnedAddress && checkTargetIsLegal(target),
+      target != earnedAddress && checkTargetIsLegal(target),
       "Illegal call target"
     );
 
-    harvestConfigPointers[earnedAddress] = SSTORE2.write(abi.encode(target, data));
+    harvestConfigPointers[earnedAddress] =
+      SSTORE2.write(abi.encode(target, data));
   }
 
-  function addEarnConfig(
-    address earnedAddress,
-    bytes memory compoundConfigData
-  ) public virtual whenNotPaused requiresAuth {
+  function addEarnConfig(address earnedAddress, bytes memory compoundConfigData)
+    public
+    virtual
+    whenNotPaused
+    requiresAuth
+  {
     require(
-       earnedAddress != address(0) && checkTargetIsLegal(earnedAddress),
+      earnedAddress != address(0) && checkTargetIsLegal(earnedAddress),
       "Illegal earnedAddress"
     );
 
@@ -126,7 +130,6 @@ abstract contract StratX4Compounding is StratX4 {
 
   function checkTargetIsLegal(address addr) internal view returns (bool) {
     return addr != address(this) && addr != address(asset)
-      && addr != address(mainRewardToken)
-      && addr != farmContractAddress;
+      && addr != address(mainRewardToken) && addr != farmContractAddress;
   }
 }

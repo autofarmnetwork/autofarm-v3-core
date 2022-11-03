@@ -278,7 +278,9 @@ contract StratX4Test is Test {
       prevTotalAssets = strat.totalAssets();
 
       deal(
-        address(asset), address(farmContractAddress), asset.balanceOf(address(farmContractAddress)) + amount
+        address(asset),
+        address(farmContractAddress),
+        asset.balanceOf(address(farmContractAddress)) + amount
       );
       strat.public__vestProfit(amount);
 

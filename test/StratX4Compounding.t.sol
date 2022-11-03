@@ -24,14 +24,14 @@ contract MockStrat is StratX4Compounding {
     address _mainRewardToken,
     bytes memory _mainCompoundConfigData
   )
-  StratX4Compounding(
-    _asset,
-    _farmContractAddress,
-    _feesController,
-    _authority,
-    _mainRewardToken,
-    _mainCompoundConfigData
-  )
+    StratX4Compounding(
+      _asset,
+      _farmContractAddress,
+      _feesController,
+      _authority,
+      _mainRewardToken,
+      _mainCompoundConfigData
+    )
   {}
 
   function _compound(
@@ -41,20 +41,15 @@ contract MockStrat is StratX4Compounding {
   ) internal override returns (uint256) {
     return 1;
   }
-  function _emergencyUnfarm() internal override {
-  }
-  function _farm(uint256 wantAmt) internal override {
-  }
-  function _harvestMainReward() internal override {
-  }
-  function _unfarm(uint256 wantAmt) internal override {
-  }
-  function lockedAssets() internal view override returns (uint256) {
-  }
+
+  function _emergencyUnfarm() internal override {}
+  function _farm(uint256 wantAmt) internal override {}
+  function _harvestMainReward() internal override {}
+  function _unfarm(uint256 wantAmt) internal override {}
+  function lockedAssets() internal view override returns (uint256) {}
 }
 
 contract StratX4CompoundingTest is Test {
-
   ERC20 public asset = new MockERC20();
   ERC20 public mainRewardToken = new MockERC20();
   ERC20 public extraRewardToken = new MockERC20();
@@ -88,11 +83,7 @@ contract StratX4CompoundingTest is Test {
     vm.assume(amountIn > 1);
     address target = makeAddr("target");
     bytes memory data = "data";
-    strat.addHarvestConfig(
-      address(extraRewardToken),
-      target,
-      data
-    );
+    strat.addHarvestConfig(address(extraRewardToken), target, data);
     strat.addEarnConfig(address(extraRewardToken), "mock compound config");
 
     deal(address(extraRewardToken), address(strat), amountIn);
@@ -105,8 +96,7 @@ contract StratX4CompoundingTest is Test {
     deal(address(unknownRewardToken), address(strat), amountIn);
     vm.expectRevert(
       abi.encodeWithSelector(
-        StratX4Compounding.CompoundConfigNotFound.selector,
-        address(0)
+        StratX4Compounding.CompoundConfigNotFound.selector, address(0)
       )
     );
     strat.earn(address(unknownRewardToken), 1);
@@ -129,7 +119,9 @@ contract StratX4CompoundingTest is Test {
   function testAddIllegalRewardTokenHarvestConfigTarget() public {
     for (uint256 i; i < illegalTargets.length; i++) {
       vm.expectRevert("Illegal call target");
-      strat.addHarvestConfig(address(unknownRewardToken), illegalTargets[i], "mock calldata");
+      strat.addHarvestConfig(
+        address(unknownRewardToken), illegalTargets[i], "mock calldata"
+      );
     }
   }
 }

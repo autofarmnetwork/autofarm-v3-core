@@ -21,8 +21,7 @@ Sad Paths:
 	- minOutAmount not met
 	- LP: minOutAmount0/1 not met
 	- invalid swaps
-	- leftover tokens (swaps array bought token that's not converted out, or wrong ordering)
-*/
+	- leftover tokens (swaps array bought token that's not converted out, or wrong ordering)*/
 
 string constant CHAIN = "bsc";
 uint256 constant BLOCK = 20770469;
@@ -182,10 +181,10 @@ contract AutoswapTest is Test {
 
   /*
   function testGetLiquiditiesForTokenPair() public view {
-	  (uint112[2][] memory liquidities, uint256 totalLiquidity) = autoswap.getLiquiditiesForTokenPair(WETHAddress, AUTO);
-	  console.log(liquidities[0][0]);
-	  console.log(liquidities[1][0]);
-	  console.log(totalLiquidity);
+   (uint112[2][] memory liquidities, uint256 totalLiquidity) = autoswap.getLiquiditiesForTokenPair(WETHAddress, AUTO);
+   console.log(liquidities[0][0]);
+   console.log(liquidities[1][0]);
+   console.log(totalLiquidity);
   }
   */
 
