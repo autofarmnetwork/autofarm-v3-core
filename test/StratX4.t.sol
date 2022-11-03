@@ -21,6 +21,7 @@ contract StratX4Test is Test {
   Authority public authority;
   MockStrat public strat;
   address public feesController;
+  address public farmContractAddress;
   address public user;
   uint256 public userPrivateKey = 0xBEEF;
   bytes32 constant PERMIT_TYPEHASH = keccak256(
@@ -44,18 +45,19 @@ contract StratX4Test is Test {
     rewardToken = new MockERC20();
     authority = new MockAuthority();
     feesController = makeAddr("feesController");
+    farmContractAddress = makeAddr("farm");
     user = vm.addr(userPrivateKey);
     strat = new MockStrat(
       address(asset),
-      makeAddr("farm"),
+      farmContractAddress,
       feesController,
       authority
     );
     strat.setFeeRate(1e14);
   }
 
-  function testTotalAssets() public {
-    assertEq(strat.totalAssets(), 0);
+  function testTotalAssetsWhenPaused() public {
+    strat.deprecate();
     deal(address(asset), address(strat), 1 ether);
     assertEq(strat.totalAssets(), 1 ether);
   }
@@ -72,6 +74,30 @@ contract StratX4Test is Test {
 
     vm.prank(user);
     strat.deposit(amount, address(user));
+  }
+
+  function testDepositWhenDeprecatedShouldFail() public {
+    strat.deprecate();
+    uint256 amount = 1;
+    deal(address(asset), address(user), amount);
+
+    vm.startPrank(user);
+    asset.approve(address(strat), amount);
+    vm.expectRevert("Pausable: paused");
+    strat.deposit(amount, address(user));
+  }
+
+  function testWithdrawWhenDeprecatedShouldSucceed() public {
+    uint256 amount = 1;
+    deal(address(asset), address(user), amount);
+
+    vm.startPrank(user);
+    asset.approve(address(strat), amount);
+    strat.deposit(amount, address(user));
+    assertEq(asset.balanceOf(address(user)), 0);
+    strat.deprecate();
+    strat.withdraw(amount, address(user), address(user));
+    assertEq(asset.balanceOf(address(user)), amount);
   }
 
   function testDepositWithPermit() public {
@@ -208,13 +234,13 @@ contract StratX4Test is Test {
       "Collectible fees should add up"
     );
 
-    deal(address(rewardToken), feesController, 1); // simulate 1 wei optimization on feesController
+    // deal(address(rewardToken), feesController, 1); // simulate 1 wei optimization on feesController
 
-    if (totalFees <= 1) {
+    if (totalFees == 0) {
       vm.expectRevert("No fees collectable");
     }
     strat.collectFees(address(rewardToken));
-    if (totalFees > 1) {
+    if (totalFees > 0) {
       assertEq(
         rewardToken.balanceOf(strat.feesController()),
         totalFees,
@@ -252,7 +278,7 @@ contract StratX4Test is Test {
       prevTotalAssets = strat.totalAssets();
 
       deal(
-        address(asset), address(strat), asset.balanceOf(address(strat)) + amount
+        address(asset), address(farmContractAddress), asset.balanceOf(address(farmContractAddress)) + amount
       );
       strat.public__vestProfit(amount);
 

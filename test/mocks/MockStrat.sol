@@ -70,8 +70,8 @@ contract MockStrat is StratX4 {
     _vestProfit(profit);
   }
 
-  function lockedAssets() internal pure override returns (uint256) {
-    return 0;
+  function lockedAssets() internal view override returns (uint256) {
+    return asset.balanceOf(farmContractAddress);
   }
 
   function debug__warmFeesCollectable(address earnedAddress) public {

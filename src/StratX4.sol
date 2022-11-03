@@ -77,6 +77,14 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
   ///// ERC4626 compatibility /////
 
+  function previewDeposit(uint256 assets) public view override whenNotPaused returns (uint256) {
+    return super.previewDeposit(assets);
+  }
+
+  function previewMint(uint256 shares) public view override whenNotPaused returns (uint256) {
+    return super.previewMint(shares);
+  }
+
   // totalAssets is adjusted to vest earned profits over a vesting period
   // to prevent front-running and remove the need for an entrance fee
   function totalAssets() public view override returns (uint256 amount) {
