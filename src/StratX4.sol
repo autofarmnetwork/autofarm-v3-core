@@ -162,7 +162,7 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     harvest(earnedAddress);
     (earnedAmount, feeCollected) = getEarnedAmountAfterFee(earnedAddress);
 
-    require(earnedAmount > 1, "StratX4: Nothing earned after feeCollecteds");
+    require(earnedAmount > 1, "StratX4: Nothing earned after fee collection");
     earnedAmount -= 1;
 
     profit = compound(earnedAddress, earnedAmount);

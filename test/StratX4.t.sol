@@ -141,7 +141,7 @@ contract StratX4Test is Test {
   }
 
   function testEarnNothingHarvested() public {
-    vm.expectRevert("StratX4: Nothing earned after fees");
+    vm.expectRevert("StratX4: Nothing earned after fees collection");
     strat.earn(address(rewardToken), 1);
   }
 
