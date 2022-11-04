@@ -101,7 +101,7 @@ contract DeployStrat is Script, Test {
 
     address rewardToken = strat.mainRewardToken();
     vm.prank(vm.envAddress("KEEPER_ADDRESS"));
-    uint256 compoundedAssets = strat.earn(rewardToken, 1);
+    (uint256 compoundedAssets,,) = strat.earn(rewardToken, 1);
     assertGt(compoundedAssets, 0, "earn harvests less than expected harvest");
   }
 }

@@ -156,13 +156,13 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
     public
     requiresAuth
     whenNotPaused
-    returns (uint256 profit)
+    returns (uint256 profit, uint256 earnedAmount, uint256 feeCollected)
   {
     require(minAmountOut > 0, "StratX4: minAmount Outmust be at least 1");
     harvest(earnedAddress);
-    (uint256 earnedAmount, uint256 fee) = getEarnedAmountAfterFee(earnedAddress);
+    (earnedAmount, feeCollected) = getEarnedAmountAfterFee(earnedAddress);
 
-    require(earnedAmount > 1, "StratX4: Nothing earned after fees");
+    require(earnedAmount > 1, "StratX4: Nothing earned after feeCollecteds");
     earnedAmount -= 1;
 
     profit = compound(earnedAddress, earnedAmount);
@@ -175,7 +175,7 @@ abstract contract StratX4 is ERC4626, Auth, Pausable {
 
     _farm(profit);
     _vestProfit(profit);
-    emit Earn(earnedAddress, profit, earnedAmount, fee);
+    emit Earn(earnedAddress, profit, earnedAmount, feeCollected);
   }
 
   // Calls external contract to retrieve reward tokens
