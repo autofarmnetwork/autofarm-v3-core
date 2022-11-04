@@ -20,3 +20,6 @@
 [submodule "lib/create3"]
 	path = lib/create3
 	url = https://github.com/0xsequence/create3
+[submodule "lib/create3-factory"]
+	path = lib/create3-factory
+	url = https://github.com/zeframlou/create3-factory
