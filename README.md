@@ -1,6 +1,12 @@
 Autofarm V2
 ===========
 
+## Deployment
+
+1. Assign team roles JSON at `./config/roles.json`.
+2. Set environment variables `TREASURY_ADDRESS` and `SAV_ADDRESS`.
+3. Run `forge script script/deploy-autofarm.sol --rpc-url bsc --private-key $PRIVATE_KEY --verify --verifier etherscan --broadcast`.
+
 ## WHAT'S NEW in V2
 
 ### ERC4626 Tokenized Vault Standard compatibility:
