@@ -6,9 +6,13 @@ import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {UniswapTestBase} from "./test-bases/UniswapTestBase.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
+import {
+  MultiRolesAuthority,
+  Authority
+} from "solmate/auth/authorities/MultiRolesAuthority.sol";
 
 import {SwapRoute} from "../src/libraries/StratX4LibEarn.sol";
-import {Roles, AutofarmAuthority} from "../src/auth/Auth.sol";
+import {Roles} from "../src/auth/Auth.sol";
 import {AutofarmFeesController} from "../src/FeesController.sol";
 
 contract FeesControllerTestBase is UniswapTestBase {
@@ -20,7 +24,8 @@ contract FeesControllerTestBase is UniswapTestBase {
   address public keeper = makeAddr("keeper");
 
   function setUp() public virtual {
-    AutofarmAuthority auth = new AutofarmAuthority(address(this));
+    MultiRolesAuthority auth =
+      new MultiRolesAuthority(address(this), Authority(address(0)));
     auth.setUserRole(keeper, uint8(Roles.Keeper), true);
     auth.setUserRole(deployer, uint8(Roles.Gov), true);
     feesController = new AutofarmFeesController(

@@ -21,6 +21,8 @@ import {
   EarnConfig
 } from "../../src/json-parsers/VenusStratConfigJsonLib.sol";
 
+string constant STRAT_CONFIG_FILE = "/vaults-config/bsc/venus-USDC.json";
+
 contract DeployStrat is Test {
   using stdJson for string;
 
@@ -33,7 +35,7 @@ contract DeployStrat is Test {
 
   function deployStrat() internal {
     string memory root = vm.projectRoot();
-    string memory path = string.concat(root, vm.envString("STRAT_CONFIG_FILE"));
+    string memory path = string.concat(root, STRAT_CONFIG_FILE);
     string memory json = vm.readFile(path);
 
     (

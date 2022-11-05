@@ -13,6 +13,7 @@ contract AutofarmFeesController is Auth {
   using SafeTransferLib for ERC20;
   using FixedPointMathLib for uint256;
 
+  uint8 public constant MAX_BSC_PLATFORM_FEE = 64;
   address public constant AUTOv2 = 0xa184088a740c695E156F91f5cC086a06bb78b827;
   address public treasury;
   address public SAV;
@@ -37,21 +38,13 @@ contract AutofarmFeesController is Auth {
   ) Auth(address(0), _authority) {
     treasury = _treasury;
     SAV = _sav;
+    if (block.chainid != 56) {
+      require(_portionToPlatform == type(uint8).max, "Platform fee on BSC is limited");
+    } else {
+      require(_portionToPlatform <= MAX_BSC_PLATFORM_FEE, "Platform fee on BSC is limited");
+    }
     portionToPlatform = _portionToPlatform;
     portionToAUTOBurn = _portionToAUTOBurn;
-  }
-
-  function forwardFeesBulk(
-    address[] calldata rewards,
-    uint256[] calldata minAmountOuts
-  ) public requiresAuth {
-    require(rewards.length == minAmountOuts.length, "lengths must be equal");
-    for (uint256 i; i < rewards.length;) {
-      forwardFees(rewards[i], minAmountOuts[i]);
-      unchecked {
-        i++;
-      }
-    }
   }
 
   function forwardFees(address earnedAddress, uint256 minAUTOOut)
@@ -117,10 +110,16 @@ contract AutofarmFeesController is Auth {
   }
 
   function setBurnPortion(uint8 burn) external requiresAuth {
+    if (block.chainid != 56) {
+      revert("Invalid on non BSC chains");
+    }
     portionToAUTOBurn = burn;
   }
 
   function setTreasury(address _treasury) external requiresAuth {
+    if (block.chainid != 56) {
+      revert("Invalid on non BSC chains");
+    }
     treasury = _treasury;
   }
 

@@ -1,10 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Auth, Authority} from "solmate/auth/authorities/RolesAuthority.sol";
+import {Auth, Authority} from "solmate/auth/Auth.sol";
 
-import {StratX4} from "./StratX4.sol";
-import {AutofarmFeesController} from "./FeesController.sol";
+interface IAutofarmFeesController {
+  function forwardFees(address earnedAddress, uint256 minAUTOOut) external;
+}
+
+interface IStratX4 {
+  function earn(address earnedAddress, uint256 minAmountOut)
+    external
+    returns (uint256 profit, uint256 earnedAmount, uint256 feeCollected);
+  function collectFees(address earnedAddress) external returns (uint256 amount);
+  function setFeeRate(uint256 _feeRate) external;
+}
 
 contract Keeper is Auth {
   address public immutable feesController;
@@ -19,11 +28,14 @@ contract Keeper is Auth {
     address[] calldata strats,
     address[] calldata earnedAddresses,
     uint256[] calldata minAmountsOut
-  ) external requiresAuth returns (
-    uint256[] memory profits,
-    uint256[] memory earnedAmounts,
-    uint256[] memory feesCollected
   )
+    external
+    requiresAuth
+    returns (
+      uint256[] memory profits,
+      uint256[] memory earnedAmounts,
+      uint256[] memory feesCollected
+    )
   {
     require(
       strats.length == earnedAddresses.length, "Input arrays length mismatch"
@@ -35,7 +47,7 @@ contract Keeper is Auth {
     profits = new uint256[](strats.length);
 
     for (uint256 i; i < strats.length;) {
-      try StratX4(strats[i]).earn(earnedAddresses[i], minAmountsOut[i])
+      try IStratX4(strats[i]).earn(earnedAddresses[i], minAmountsOut[i])
       returns (uint256 profit, uint256 earnedAmount, uint256 feeCollected) {
         profits[i] = profit;
         earnedAmounts[i] = earnedAmount;
@@ -57,12 +69,15 @@ contract Keeper is Auth {
     amounts = new uint256[](strats.length);
 
     for (uint256 i; i < strats.length;) {
-      try StratX4(strats[i]).collectFees(earnedAddresses[i]) returns (
+      try IStratX4(strats[i]).collectFees(earnedAddresses[i]) returns (
         uint256 amount
       ) {
         amounts[i] = amount;
       } catch {}
-      i++;
+
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -73,8 +88,11 @@ contract Keeper is Auth {
     require(strats.length == feeRates.length);
 
     for (uint256 i; i < strats.length;) {
-      try StratX4(strats[i]).setFeeRate(feeRates[i]) {} catch {}
-      i++;
+      try IStratX4(strats[i]).setFeeRate(feeRates[i]) {} catch {}
+
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -85,10 +103,13 @@ contract Keeper is Auth {
     require(earnedAddresses.length == minAmountsOut.length);
 
     for (uint256 i; i < earnedAddresses.length;) {
-      try AutofarmFeesController(feesController).forwardFees(
+      try IAutofarmFeesController(feesController).forwardFees(
         earnedAddresses[i], minAmountsOut[i]
       ) {} catch {}
-      i++;
+
+      unchecked {
+        i++;
+      }
     }
   }
 }
