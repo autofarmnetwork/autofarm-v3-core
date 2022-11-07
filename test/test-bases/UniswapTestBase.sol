@@ -15,10 +15,12 @@ abstract contract UniswapTestBase is Test {
   IUniswapV2Factory public immutable factory;
 
   constructor() {
-    factory = IUniswapV2Factory(
-      deployCode(
-        "./uniswap-build/UniswapV2Factory.json", abi.encode(address(this))
-      )
+    factory = IUniswapV2Factory(deployFactory());
+  }
+
+  function deployFactory() internal returns (address _factory) {
+    _factory = deployCode(
+      "./uniswap-v2-build/UniswapV2Factory.json", abi.encode(address(this))
     );
   }
 
@@ -28,14 +30,27 @@ abstract contract UniswapTestBase is Test {
     uint256 amountA,
     uint256 amountB,
     address to
-  ) internal returns (address pair) {
-    pair = IUniswapV2Factory(factory).getPair(tokenA, tokenB);
+  ) internal returns (address pair, uint256 liquidity) {
+    return addLiquidityForFactory(
+      tokenA, tokenB, amountA, amountB, to, address(factory)
+    );
+  }
+
+  function addLiquidityForFactory(
+    address tokenA,
+    address tokenB,
+    uint256 amountA,
+    uint256 amountB,
+    address to,
+    address _factory
+  ) internal returns (address pair, uint256 liquidity) {
+    pair = IUniswapV2Factory(_factory).getPair(tokenA, tokenB);
     if (pair == address(0)) {
-      pair = IUniswapV2Factory(factory).createPair(tokenA, tokenB);
+      pair = IUniswapV2Factory(_factory).createPair(tokenA, tokenB);
     }
 
-    deal(tokenA, pair, amountA);
-    deal(tokenB, pair, amountB);
-    IUniswapV2Pair(pair).mint(to);
+    deal(tokenA, pair, ERC20(tokenA).balanceOf(pair) + amountA);
+    deal(tokenB, pair, ERC20(tokenB).balanceOf(pair) + amountB);
+    liquidity = IUniswapV2Pair(pair).mint(to);
   }
 }

@@ -27,7 +27,7 @@ contract MasterchefLP1Test is UniswapTestBase {
   StratX4MasterchefLP1 public strat;
 
   function setUp() public {
-    asset = addLiquidity(
+    (asset,) = addLiquidity(
       address(tokenA),
       address(tokenB),
       1 ether, // amountTokenDesired
@@ -35,7 +35,7 @@ contract MasterchefLP1Test is UniswapTestBase {
       address(0) // to
     );
 
-    pairAC = addLiquidity(
+    (pairAC,) = addLiquidity(
       address(tokenC),
       address(tokenA),
       1 ether, // amountTokenDesired

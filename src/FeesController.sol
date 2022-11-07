@@ -39,9 +39,14 @@ contract AutofarmFeesController is Auth {
     treasury = _treasury;
     SAV = _sav;
     if (block.chainid != 56) {
-      require(_portionToPlatform == type(uint8).max, "Platform fee on BSC is limited");
+      require(
+        _portionToPlatform == type(uint8).max, "Platform fee on BSC is limited"
+      );
     } else {
-      require(_portionToPlatform <= MAX_BSC_PLATFORM_FEE, "Platform fee on BSC is limited");
+      require(
+        _portionToPlatform <= MAX_BSC_PLATFORM_FEE,
+        "Platform fee on BSC is limited"
+      );
     }
     portionToPlatform = _portionToPlatform;
     portionToAUTOBurn = _portionToAUTOBurn;

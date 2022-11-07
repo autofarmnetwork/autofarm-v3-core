@@ -27,7 +27,8 @@ contract DeployAutofarm is Script {
   function run() public {
     vm.startBroadcast();
 
-    CREATE3Factory factory = new CREATE3Factory{salt: "AUTOFARM_CREATE3_FACTORY"}();
+    CREATE3Factory factory =
+      new CREATE3Factory{salt: "AUTOFARM_CREATE3_FACTORY"}();
 
     address auth = factory.deploy(
       keccak256("V3_AUTHORITY"),
@@ -65,9 +66,7 @@ contract DeployAutofarm is Script {
     );
 
     console.log("Keeper deployed", keeper);
-    console2.logBytes(
-      abi.encode(feesController, MultiRolesAuthority(auth))
-    );
+    console2.logBytes(abi.encode(feesController, MultiRolesAuthority(auth)));
 
     setupRoleCapabilities(MultiRolesAuthority(auth));
     setupAddrRoles(MultiRolesAuthority(auth));

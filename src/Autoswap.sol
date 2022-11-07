@@ -10,6 +10,8 @@ import "solmate/tokens/WETH.sol";
 import "./libraries/Uniswap.sol";
 import "./libraries/SwapEncoder.sol";
 
+import {IERC4626} from "forge-std/interfaces/IERC4626.sol";
+
 error DexNotWhitelisted(address dex);
 error PairNotFound(address router, address token0, address token1);
 error SubswapFailed(address target, address inToken, uint256 subswapInAmount);
@@ -87,7 +89,7 @@ contract AutoSwapV5 is Owned {
     return VERSION;
   }
 
-  constructor(address payable _weth) Owned(msg.sender) {
+  constructor(address payable _weth, address owner) Owned(owner) {
     WETHAddress = _weth;
   }
 
@@ -149,7 +151,7 @@ contract AutoSwapV5 is Owned {
     uint256 amountOutMin,
     address[] calldata _dexes,
     OneSwap[] calldata _swaps,
-    address to,
+    address payable to,
     uint256 deadline
   ) public ensure(deadline) returns (uint256 amountOut) {
     require(amountIn > 0, "input amount should be positive");
@@ -161,7 +163,7 @@ contract AutoSwapV5 is Owned {
       ERC20(tokenIn), ERC20(WETHAddress), amountIn, amountOutMin, _dexes, _swaps
     );
     WETH(WETHAddress).withdraw(amountOut);
-    payable(to).transfer(amountOut);
+    to.transfer(amountOut);
     emit Swapped(msg.sender, tokenIn, WETHAddress, amountIn, amountOut);
   }
 
@@ -294,6 +296,11 @@ contract AutoSwapV5 is Owned {
     OneSwap[] swapsToBase;
   }
 
+  struct SwapFromLP1Options {
+    address lpSubtokenIn;
+    address lpSubtokenOut;
+  }
+
   event SwapToLP(
     address pair,
     address token0,
@@ -315,8 +322,13 @@ contract AutoSwapV5 is Owned {
 
     WETH(WETHAddress).deposit{value: msg.value}();
     {
-      amountOut = _swapToLP1(
-        WETHAddress, msg.value, _dexes, lpSwapOptions.swapsToBase, lpSwapOptions
+      (amountOut,,,) = _swapToLP1(
+        WETHAddress,
+        msg.value,
+        _dexes,
+        lpSwapOptions.swapsToBase,
+        lpSwapOptions,
+        msg.sender
       );
     }
   }
@@ -327,17 +339,189 @@ contract AutoSwapV5 is Owned {
     address[] calldata _dexes,
     LP1SwapOptions calldata lpSwapOptions,
     uint256 deadline
-  ) external ensure(deadline) returns (uint256 amountOut) {
+  ) public ensure(deadline) returns (uint256 amountOut) {
     require(
       lpSwapOptions.swapsToBase.length > 0 || lpSwapOptions.base == tokenIn
     );
 
     ERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
     {
-      amountOut = _swapToLP1(
-        tokenIn, amountIn, _dexes, lpSwapOptions.swapsToBase, lpSwapOptions
+      (amountOut,,,) = _swapToLP1(
+        tokenIn,
+        amountIn,
+        _dexes,
+        lpSwapOptions.swapsToBase,
+        lpSwapOptions,
+        msg.sender
       );
     }
+  }
+
+  function zapToLP1(
+    address tokenIn,
+    uint256 amountIn,
+    address[] calldata _dexes,
+    LP1SwapOptions calldata lpSwapOptions,
+    uint256 deadline,
+    address strat
+  )
+    external
+    ensure(deadline)
+    returns (uint256 amountOut, uint256 amountOut0, uint256 amountOut1)
+  {
+    require(
+      lpSwapOptions.swapsToBase.length > 0 || lpSwapOptions.base == tokenIn
+    );
+
+    ERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+    address asset;
+    (amountOut, asset, amountOut0, amountOut1) = _swapToLP1(
+      tokenIn,
+      amountIn,
+      _dexes,
+      lpSwapOptions.swapsToBase,
+      lpSwapOptions,
+      address(this)
+    );
+    ERC20(asset).balanceOf(address(this));
+    ERC20(asset).approve(strat, amountOut);
+    IERC4626(strat).deposit(amountOut, msg.sender);
+  }
+
+  function zapToLP1FromETH(
+    address[] calldata _dexes,
+    LP1SwapOptions calldata lpSwapOptions,
+    uint256 deadline,
+    address strat
+  )
+    external
+    payable
+    ensure(deadline)
+    returns (uint256 amountOut, uint256 amountOut0, uint256 amountOut1)
+  {
+    require(
+      lpSwapOptions.swapsToBase.length > 0 || lpSwapOptions.base == WETHAddress,
+      "Swaps must be empty if lpSubtokenIn == tokenIn"
+    );
+
+    WETH(WETHAddress).deposit{value: msg.value}();
+    address asset;
+    (amountOut, asset, amountOut0, amountOut1) = _swapToLP1(
+      WETHAddress,
+      msg.value,
+      _dexes,
+      lpSwapOptions.swapsToBase,
+      lpSwapOptions,
+      address(this)
+    );
+    ERC20(asset).balanceOf(address(this));
+    ERC20(asset).approve(strat, amountOut);
+    IERC4626(strat).deposit(amountOut, msg.sender);
+  }
+
+  struct Permit {
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
+  }
+
+  // TODO: finish
+  function swapFromLP1(
+    address tokenOut,
+    uint256 amountIn,
+    uint256 amountOutMin,
+    address[] calldata _dexes,
+    SwapFromLP1Options calldata lpSwapOptions,
+    OneSwap[] calldata _swaps,
+    uint256 deadline
+  ) external ensure(deadline) returns (uint256 amountOut) {
+    (amountOut,) = _swapFromLP1(
+      tokenOut, amountIn, _dexes, _swaps, lpSwapOptions, msg.sender, msg.sender
+    );
+    require(amountOut >= amountOutMin);
+  }
+
+  function zapFromLP1Strat(
+    address tokenOut,
+    uint256 sharesOut,
+    uint256 amountOutMin,
+    address[] calldata _dexes,
+    SwapFromLP1Options calldata lpSwapOptions,
+    OneSwap[] calldata _swaps,
+    uint256 deadline,
+    address strat
+  ) external ensure(deadline) returns (uint256 amountOut) {
+    amountOut = IERC4626(strat).redeem(sharesOut, address(this), msg.sender);
+
+    (amountOut,) = _swapFromLP1(
+      tokenOut,
+      amountOut,
+      _dexes,
+      _swaps,
+      lpSwapOptions,
+      address(this),
+      msg.sender
+    );
+    require(amountOut >= amountOutMin, "Output amount is less than minOutAmount");
+  }
+
+  function zapFromLP1StratToETH(
+    uint256 sharesOut,
+    uint256 amountOutMin,
+    address[] calldata _dexes,
+    SwapFromLP1Options calldata lpSwapOptions,
+    OneSwap[] calldata _swaps,
+    uint256 deadline,
+    address strat
+  ) external ensure(deadline) returns (uint256 amountOut) {
+    amountOut = IERC4626(strat).redeem(sharesOut, address(this), msg.sender);
+
+    (amountOut,) = _swapFromLP1(
+      WETHAddress,
+      amountOut,
+      _dexes,
+      _swaps,
+      lpSwapOptions,
+      address(this),
+      address(this)
+    );
+    require(amountOut >= amountOutMin, "Output amount is less than minOutAmount");
+    WETH(WETHAddress).withdraw(amountOut);
+    payable(msg.sender).transfer(amountOut);
+  }
+
+  function zapFromLP1StratWithPermit(
+    address tokenOut,
+    uint256 sharesOut,
+    uint256 amountOutMin,
+    address[] calldata _dexes,
+    SwapFromLP1Options calldata lpSwapOptions,
+    OneSwap[] calldata _swaps,
+    uint256 deadline,
+    address strat,
+    Permit calldata permit
+  ) external ensure(deadline) returns (uint256 amountOut) {
+    ERC20(strat).permit(
+      msg.sender,
+      address(this),
+      sharesOut,
+      deadline,
+      permit.v,
+      permit.r,
+      permit.s
+    );
+    IERC4626(strat).redeem(sharesOut, address(this), msg.sender);
+
+    (amountOut,) = _swapFromLP1(
+      tokenOut,
+      sharesOut,
+      _dexes,
+      _swaps,
+      lpSwapOptions,
+      address(this),
+      msg.sender
+    );
+    require(amountOut >= amountOutMin);
   }
 
   function _swapToLP1(
@@ -345,8 +529,17 @@ contract AutoSwapV5 is Owned {
     uint256 amountIn,
     address[] calldata _dexes,
     OneSwap[] calldata swapsToBase,
-    LP1SwapOptions calldata lpSwapOptions
-  ) internal returns (uint256 amountOut) {
+    LP1SwapOptions calldata lpSwapOptions,
+    address recipient
+  )
+    internal
+    returns (
+      uint256 amountOut,
+      address pair,
+      uint256 amountOut0,
+      uint256 amountOut1
+    )
+  {
     uint256 baseAmountIn = swapsToBase.length > 0
       ? _performSwap(
         ERC20(tokenIn),
@@ -359,26 +552,28 @@ contract AutoSwapV5 is Owned {
       : amountIn;
     DexConfig memory dexConfig =
       abi.decode(SSTORE2.read(dexConfigs[_dexes[0]]), (DexConfig));
-    address pair = Uniswap.getPair(
+    pair = Uniswap.getPair(
       _dexes[0],
       dexConfig.INIT_HASH_CODE,
       lpSwapOptions.base,
       lpSwapOptions.token
     );
-    (uint256 swapAmount, uint256 tokenOutAmount) = Uniswap.calcSimpleZap(
+    uint256 swapAmount;
+    (swapAmount, amountOut1) = Uniswap.calcSimpleZap(
       pair, dexConfig.fee, baseAmountIn, lpSwapOptions.base, lpSwapOptions.token
     );
-    require(baseAmountIn - swapAmount > lpSwapOptions.amountOutMin0);
-    require(tokenOutAmount > lpSwapOptions.amountOutMin1);
+    amountOut0 = baseAmountIn - swapAmount;
+    require(amountOut0 >= lpSwapOptions.amountOutMin0);
+    require(amountOut1 >= lpSwapOptions.amountOutMin1);
 
     amountOut = Uniswap.oneSidedSwap(
       pair,
       swapAmount,
-      tokenOutAmount,
+      amountOut1,
       lpSwapOptions.base,
       lpSwapOptions.token,
       baseAmountIn,
-      msg.sender
+      recipient
     );
 
     emit SwapToLP(
@@ -386,9 +581,91 @@ contract AutoSwapV5 is Owned {
       lpSwapOptions.base,
       lpSwapOptions.token,
       amountOut,
-      baseAmountIn - swapAmount,
-      tokenOutAmount
+      amountOut0,
+      amountOut1
       );
+  }
+
+  // TODO: finish
+  function _swapFromLP1(
+    address tokenOut,
+    uint256 amountIn,
+    address[] calldata _dexes,
+    OneSwap[] calldata swaps,
+    SwapFromLP1Options calldata lpSwapOptions,
+    address owner,
+    address recipient
+  ) internal returns (uint256 amountOut, address pair) {
+    require(
+      lpSwapOptions.lpSubtokenIn != lpSwapOptions.lpSubtokenOut,
+      "LP subtokens cannot be the same"
+    );
+    require(
+      (swaps.length > 0 || lpSwapOptions.lpSubtokenOut == tokenOut)
+        && !(swaps.length > 0 && lpSwapOptions.lpSubtokenOut == tokenOut),
+      "Swaps must be empty if lpSubtokenOut == tokenOut"
+    );
+
+    DexConfig memory dexConfig =
+      abi.decode(SSTORE2.read(dexConfigs[_dexes[0]]), (DexConfig));
+
+    uint256 lpSubswapAmount;
+    {
+      pair = Uniswap.getPair(
+        _dexes[0],
+        dexConfig.INIT_HASH_CODE,
+        lpSwapOptions.lpSubtokenIn,
+        lpSwapOptions.lpSubtokenOut
+      );
+      if (owner == address(this)) {
+        ERC20(pair).safeTransfer(pair, amountIn);
+      } else {
+        ERC20(pair).safeTransferFrom(owner, pair, amountIn);
+      }
+      (uint256 amountOut0, uint256 amountOut1) =
+        IUniswapV2Pair(pair).burn(address(this));
+
+      if (lpSwapOptions.lpSubtokenIn < lpSwapOptions.lpSubtokenOut) {
+        (lpSubswapAmount, amountOut) = (amountOut0, amountOut1);
+      } else {
+        (lpSubswapAmount, amountOut) = (amountOut1, amountOut0);
+      }
+    }
+
+    if (swaps.length == 0) {
+      ERC20(tokenOut).safeTransfer(recipient, amountOut);
+    }
+
+    amountOut += Uniswap._swapWithTransferIn(
+      pair,
+      dexConfig.fee,
+      lpSwapOptions.lpSubtokenIn,
+      lpSwapOptions.lpSubtokenOut,
+      lpSubswapAmount,
+      swaps.length > 0 ? address(this) : recipient
+    );
+
+    if (swaps.length > 0) {
+      amountOut = _performSwap(
+        ERC20(lpSwapOptions.lpSubtokenOut),
+        ERC20(tokenOut),
+        amountOut,
+        0,
+        _dexes,
+        swaps
+      );
+    }
+
+    /*
+    emit SwapFromLP(
+      pair,
+      lpSwapOptions.lpSubtokenIn,
+      lpSwapOptions.lpSubtokenOut,
+      tokenOut,
+      amountOut,
+      lpSubswapAmount
+    );
+    */
   }
 
   // **** ADMIN ****

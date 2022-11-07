@@ -61,7 +61,7 @@ contract FeesControllerTest is FeesControllerTestBase {
     address[] memory tokensPath = new address[](1);
     uint256[] memory swapFees = new uint256[](1);
 
-    pairsPath[0] = addLiquidity(
+    (pairsPath[0],) = addLiquidity(
       address(rewardToken), address(AUTOv2), 1 ether, 1 ether, address(0)
     );
     tokensPath[0] = address(AUTOv2);

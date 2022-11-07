@@ -2,16 +2,55 @@
 
 pragma solidity ^0.8.0;
 
-import "solmate/utils/FixedPointMathLib.sol";
-import "solmate/tokens/ERC20.sol";
-import "solmate/utils/SafeTransferLib.sol";
-
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import "@uniswap/v2-core/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-core/interfaces/IUniswapV2Factory.sol";
 
+library TransferHelper {
+  function safeApprove(IERC20 token, address to, uint256 value) internal {
+    // bytes4(keccak256(bytes('approve(address,uint256)')));
+    (bool success, bytes memory data) =
+      address(token).call(abi.encodeWithSelector(0x095ea7b3, to, value));
+    require(
+      success && (data.length == 0 || abi.decode(data, (bool))),
+      "TransferHelper::safeApprove: approve failed"
+    );
+  }
+
+  function safeTransfer(IERC20 token, address to, uint256 value) internal {
+    // bytes4(keccak256(bytes('transfer(address,uint256)')));
+    (bool success, bytes memory data) =
+      address(token).call(abi.encodeWithSelector(0xa9059cbb, to, value));
+    require(
+      success && (data.length == 0 || abi.decode(data, (bool))),
+      "TransferHelper::safeTransfer: transfer failed"
+    );
+  }
+
+  function safeTransferFrom(
+    IERC20 token,
+    address from,
+    address to,
+    uint256 value
+  ) internal {
+    // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
+    (bool success, bytes memory data) =
+      address(token).call(abi.encodeWithSelector(0x23b872dd, from, to, value));
+    require(
+      success && (data.length == 0 || abi.decode(data, (bool))),
+      "TransferHelper::transferFrom: transferFrom failed"
+    );
+  }
+
+  function safeTransferETH(address to, uint256 value) internal {
+    (bool success,) = to.call{value: value}(new bytes(0));
+    require(success, "TransferHelper::safeTransferETH: ETH transfer failed");
+  }
+}
+
 library Uniswap {
-  using SafeTransferLib for ERC20;
-  using SafeTransferLib for address;
+  using TransferHelper for IERC20;
 
   /**
    * UniswapV2Library functions **
@@ -190,15 +229,27 @@ library Uniswap {
     uint256 amountIn,
     address to
   ) internal returns (uint256 outAmount) {
-    ERC20(inToken).safeTransfer(pair, swapAmount);
+    IERC20(inToken).safeTransfer(pair, swapAmount);
     if (inToken < otherToken) {
       IUniswapV2Pair(pair).swap(0, tokenAmountOut, address(this), "");
     } else {
       IUniswapV2Pair(pair).swap(tokenAmountOut, 0, address(this), "");
     }
-    ERC20(inToken).safeTransfer(address(pair), amountIn - swapAmount);
-    ERC20(otherToken).safeTransfer(address(pair), tokenAmountOut - 1);
+    IERC20(inToken).safeTransfer(address(pair), amountIn - swapAmount);
+    IERC20(otherToken).safeTransfer(address(pair), tokenAmountOut - 1);
     outAmount = IUniswapV2Pair(pair).mint(to);
+  }
+
+  function _swapWithTransferIn(
+    address pair,
+    uint256 fee,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn,
+    address to
+  ) internal returns (uint256 amountOut) {
+    IERC20(tokenIn).safeTransfer(pair, amountIn);
+    return _swap(pair, fee, tokenIn, tokenOut, amountIn, to);
   }
 
   function _swap(
@@ -225,7 +276,7 @@ library Uniswap {
     address tokenOut,
     uint256 amountIn
   ) internal returns (uint256 amountOut) {
-    ERC20(tokenIn).safeTransfer(pair, amountIn);
+    IERC20(tokenIn).safeTransfer(pair, amountIn);
     (uint256 reserve0, uint256 reserve1) = getReserves(pair, tokenIn, tokenOut);
     amountOut = getAmountOut(amountIn, reserve0, reserve1, fee);
     // TODO: amount is already in pair if linear path
@@ -246,8 +297,8 @@ library Uniswap {
   ) internal returns (uint256 amountOut) {
     (uint256 reserveInput, uint256 reserveOutput) =
       getReserves(pair, tokenIn, tokenOut);
-    ERC20(tokenIn).safeTransfer(pair, amountIn);
-    amountIn = ERC20(tokenIn).balanceOf(pair) - reserveInput;
+    IERC20(tokenIn).safeTransfer(pair, amountIn);
+    amountIn = IERC20(tokenIn).balanceOf(pair) - reserveInput;
     amountOut = getAmountOut(amountIn, reserveInput, reserveOutput, fee);
     // TODO: amount is already in pair if linear path
     // TODO: pass to next pair directly if linear path
