@@ -5,11 +5,6 @@ import {SSTORE2} from "solmate/utils/SSTORE2.sol";
 import {Authority} from "solmate/auth/Auth.sol";
 
 import {StratX4} from "./StratX4.sol";
-import {
-  StratX4LibEarn,
-  ZapLiquidityConfig,
-  SwapRoute
-} from "./libraries/StratX4LibEarn.sol";
 
 abstract contract StratX4Compounding is StratX4 {
   error CompoundConfigNotFound(address compoundConfigPointer);

@@ -6,7 +6,7 @@ solc_version = '0.8.13'
 fs_permissions = [
   { access = "read", path = "./vaults-config/"},
   { access = "read", path = "./config/"},
-  { access = "read", path = "./uniswap-build/"}
+  { access = "read", path = "./uniswap-v2-build/"}
 ]
 optimizer = true
 optimizer_runs = 10_000
