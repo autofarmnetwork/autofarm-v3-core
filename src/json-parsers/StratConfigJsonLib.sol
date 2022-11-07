@@ -4,12 +4,12 @@ pragma solidity ^0.8.13;
 import "forge-std/Vm.sol";
 import {LibString} from "solmate/utils/LibString.sol";
 
-import {SwapRoute, ZapLiquidityConfig} from "../libraries/StratX4LibEarn.sol";
+import {UniswapV2Helper} from "../libraries/UniswapV2Helper.sol";
 
 struct EarnConfig {
   address rewardToken;
-  SwapRoute swapRoute;
-  ZapLiquidityConfig zapLiquidityConfig;
+  UniswapV2Helper.SwapRoute swapRoute;
+  UniswapV2Helper.ZapLiquidityConfig zapLiquidityConfig;
 }
 
 struct EarnConfigJson {
@@ -25,15 +25,15 @@ struct StratConfigJson {
 }
 
 struct SwapRouteJson {
+  uint256[] feeFactors;
   address[] pairsPath;
-  uint256[] swapFees;
   address[] tokensPath;
 }
 
 struct ZapLiquidityConfigJson {
+  uint256 feeFactor;
   address lpSubtokenIn;
   address lpSubtokenOut;
-  uint256 swapFee;
 }
 
 library StratConfigJsonLib {
@@ -68,17 +68,21 @@ library StratConfigJsonLib {
   function mapSwapRoute(SwapRouteJson memory swapRouteJson)
     internal
     pure
-    returns (SwapRoute memory swapRoute)
+    returns (UniswapV2Helper.SwapRoute memory swapRoute)
   {
-    swapRoute.swapFees = swapRouteJson.swapFees;
+    swapRoute.feeFactors = swapRouteJson.feeFactors;
     swapRoute.pairsPath = swapRouteJson.pairsPath;
     swapRoute.tokensPath = swapRouteJson.tokensPath;
   }
 
   function mapZapLiquidityConfig(
     ZapLiquidityConfigJson memory zapLiquidityConfigJson
-  ) internal pure returns (ZapLiquidityConfig memory zapLiquidityConfig) {
-    zapLiquidityConfig.swapFee = zapLiquidityConfigJson.swapFee;
+  )
+    internal
+    pure
+    returns (UniswapV2Helper.ZapLiquidityConfig memory zapLiquidityConfig)
+  {
+    zapLiquidityConfig.feeFactor = zapLiquidityConfigJson.feeFactor;
     zapLiquidityConfig.lpSubtokenIn = zapLiquidityConfigJson.lpSubtokenIn;
     zapLiquidityConfig.lpSubtokenOut = zapLiquidityConfigJson.lpSubtokenOut;
   }

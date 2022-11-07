@@ -7,7 +7,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SSTORE2} from "solmate/utils/SSTORE2.sol";
 
-import {StratX4LibEarn, SwapRoute} from "./libraries/StratX4LibEarn.sol";
+import {UniswapV2Helper} from "./libraries/UniswapV2Helper.sol";
 
 contract AutofarmFeesController is Auth {
   using SafeTransferLib for ERC20;
@@ -60,8 +60,8 @@ contract AutofarmFeesController is Auth {
     require(
       rewardCfgPointer != address(0), "FeesController: RewardCfg uninitialized"
     );
-    SwapRoute memory swapRoute =
-      abi.decode(SSTORE2.read(rewardCfgPointer), (SwapRoute));
+    UniswapV2Helper.SwapRoute memory swapRoute =
+      abi.decode(SSTORE2.read(rewardCfgPointer), (UniswapV2Helper.SwapRoute));
 
     uint256 earnedAmt = ERC20(earnedAddress).balanceOf(address(this));
 
@@ -77,10 +77,10 @@ contract AutofarmFeesController is Auth {
     earnedAmt -= feeToPlatform;
     ERC20(earnedAddress).safeTransfer(treasury, feeToPlatform);
 
-    earnedAmt = StratX4LibEarn.swapExactTokensForTokens(
-      earnedAddress,
+    earnedAmt = UniswapV2Helper.swapExactTokensForTokens(
       earnedAmt,
-      swapRoute.swapFees,
+      1,
+      swapRoute.feeFactors,
       swapRoute.pairsPath,
       swapRoute.tokensPath
     );
@@ -99,13 +99,13 @@ contract AutofarmFeesController is Auth {
    * Setters
    */
 
-  function setRewardCfg(address reward, SwapRoute calldata route)
+  function setRewardCfg(address reward, UniswapV2Helper.SwapRoute calldata route)
     external
     requiresAuth
   {
     require(route.pairsPath.length > 0);
     require(route.tokensPath.length == route.pairsPath.length);
-    require(route.tokensPath.length == route.swapFees.length);
+    require(route.tokensPath.length == route.feeFactors.length);
     require(route.tokensPath[route.tokensPath.length - 1] == AUTOv2);
     rewardCfgPointers[reward] = SSTORE2.write(abi.encode(route));
   }

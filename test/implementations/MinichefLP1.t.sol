@@ -5,16 +5,14 @@ import "forge-std/Test.sol";
 import {Authority} from "solmate/auth/Auth.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
-import {
-  SwapRoute, ZapLiquidityConfig
-} from "../../src/libraries/StratX4LibEarn.sol";
+import {UniswapV2Helper} from "../../src/libraries/UniswapV2Helper.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
 import {MockAuthority} from "../mocks/MockAuthority.sol";
 import {IMinichefV2} from "../../src/interfaces/IMinichef.sol";
 import {StratX4MinichefLP1} from "../../src/implementations/MinichefLP1.sol";
-import {UniswapTestBase} from "../test-bases/UniswapTestBase.sol";
+import {UniswapV2TestBase} from "../test-bases/UniswapV2TestBase.sol";
 
-contract MinichefLP1Test is UniswapTestBase {
+contract MinichefLP1Test is UniswapV2TestBase {
   address public asset;
 
   ERC20 public tokenA = new MockERC20();
@@ -43,20 +41,22 @@ contract MinichefLP1Test is UniswapTestBase {
       address(0) // to
     );
 
-    uint256[] memory swapFees = new uint256[](1);
-    swapFees[0] = 9970;
+    uint256[] memory feeFactors = new uint256[](1);
+    feeFactors[0] = 9970;
     address[] memory pairsPath = new address[](1);
     pairsPath[0] = pairAC;
-    address[] memory tokensPath = new address[](1);
-    tokensPath[0] = address(tokenA);
+    address[] memory tokensPath = new address[](2);
+    tokensPath[0] = address(tokenC);
+    tokensPath[1] = address(tokenA);
 
-    SwapRoute memory swapRoute = SwapRoute({
-      swapFees: swapFees,
+    UniswapV2Helper.SwapRoute memory swapRoute = UniswapV2Helper.SwapRoute({
+      feeFactors: feeFactors,
       pairsPath: pairsPath,
       tokensPath: tokensPath
     });
-    ZapLiquidityConfig memory zapLiquidityConfig = ZapLiquidityConfig({
-      swapFee: 9970,
+    UniswapV2Helper.ZapLiquidityConfig memory zapLiquidityConfig = UniswapV2Helper
+      .ZapLiquidityConfig({
+      feeFactor: 9970,
       lpSubtokenIn: address(tokenA),
       lpSubtokenOut: address(tokenB)
     });

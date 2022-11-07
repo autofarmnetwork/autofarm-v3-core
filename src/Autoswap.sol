@@ -7,7 +7,9 @@ import "solmate/auth/Owned.sol";
 import "solmate/utils/FixedPointMathLib.sol";
 import "solmate/utils/SSTORE2.sol";
 import "solmate/tokens/WETH.sol";
-import "./libraries/Uniswap.sol";
+
+import {IUniswapV2Pair} from "./interfaces/Uniswap.sol";
+import {UniswapV2Helper} from "./libraries/UniswapV2Helper.sol";
 import "./libraries/SwapEncoder.sol";
 
 import {IERC4626} from "forge-std/interfaces/IERC4626.sol";
@@ -239,14 +241,15 @@ contract AutoSwapV5 is Owned {
         subswapInAmount = tokenInBalance.mulDivDown(relativeAmount.amount, 1e8);
       }
       if (dexConfig.dexType == RouterTypes.Uniswap) {
-        Uniswap.swap(
-          Uniswap.getPair(
+        UniswapV2Helper.swap(
+          UniswapV2Helper.getPair(
             dexAddress, dexConfig.INIT_HASH_CODE, _swap.tokenIn, _swap.tokenOut
           ),
           dexConfig.fee,
           _swap.tokenIn,
           _swap.tokenOut,
-          subswapInAmount
+          subswapInAmount,
+          address(this)
         );
       } else if (dexConfig.dexType == RouterTypes.Curve) {
         ERC20(_swap.tokenIn).safeApprove(dexAddress, subswapInAmount);
@@ -462,7 +465,9 @@ contract AutoSwapV5 is Owned {
       address(this),
       msg.sender
     );
-    require(amountOut >= amountOutMin, "Output amount is less than minOutAmount");
+    require(
+      amountOut >= amountOutMin, "Output amount is less than minOutAmount"
+    );
   }
 
   function zapFromLP1StratToETH(
@@ -485,7 +490,9 @@ contract AutoSwapV5 is Owned {
       address(this),
       address(this)
     );
-    require(amountOut >= amountOutMin, "Output amount is less than minOutAmount");
+    require(
+      amountOut >= amountOutMin, "Output amount is less than minOutAmount"
+    );
     WETH(WETHAddress).withdraw(amountOut);
     payable(msg.sender).transfer(amountOut);
   }
@@ -552,21 +559,21 @@ contract AutoSwapV5 is Owned {
       : amountIn;
     DexConfig memory dexConfig =
       abi.decode(SSTORE2.read(dexConfigs[_dexes[0]]), (DexConfig));
-    pair = Uniswap.getPair(
+    pair = UniswapV2Helper.getPair(
       _dexes[0],
       dexConfig.INIT_HASH_CODE,
       lpSwapOptions.base,
       lpSwapOptions.token
     );
     uint256 swapAmount;
-    (swapAmount, amountOut1) = Uniswap.calcSimpleZap(
+    (swapAmount, amountOut1) = UniswapV2Helper.calcSimpleZap(
       pair, dexConfig.fee, baseAmountIn, lpSwapOptions.base, lpSwapOptions.token
     );
     amountOut0 = baseAmountIn - swapAmount;
     require(amountOut0 >= lpSwapOptions.amountOutMin0);
     require(amountOut1 >= lpSwapOptions.amountOutMin1);
 
-    amountOut = Uniswap.oneSidedSwap(
+    amountOut = UniswapV2Helper.addLiquidityFromOneSide(
       pair,
       swapAmount,
       amountOut1,
@@ -611,7 +618,7 @@ contract AutoSwapV5 is Owned {
 
     uint256 lpSubswapAmount;
     {
-      pair = Uniswap.getPair(
+      pair = UniswapV2Helper.getPair(
         _dexes[0],
         dexConfig.INIT_HASH_CODE,
         lpSwapOptions.lpSubtokenIn,
@@ -636,7 +643,7 @@ contract AutoSwapV5 is Owned {
       ERC20(tokenOut).safeTransfer(recipient, amountOut);
     }
 
-    amountOut += Uniswap._swapWithTransferIn(
+    amountOut += UniswapV2Helper.swapWithTransferIn(
       pair,
       dexConfig.fee,
       lpSwapOptions.lpSubtokenIn,

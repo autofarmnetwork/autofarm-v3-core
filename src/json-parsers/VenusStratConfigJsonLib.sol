@@ -4,11 +4,11 @@ pragma solidity ^0.8.13;
 import "forge-std/Vm.sol";
 import {LibString} from "solmate/utils/LibString.sol";
 
-import {SwapRoute, ZapLiquidityConfig} from "../libraries/StratX4LibEarn.sol";
+import {UniswapV2Helper} from "../libraries/UniswapV2Helper.sol";
 
 struct EarnConfig {
   address rewardToken;
-  SwapRoute swapRoute;
+  UniswapV2Helper.SwapRoute swapRoute;
 }
 
 struct EarnConfigJson {
@@ -22,8 +22,8 @@ struct StratConfigJson {
 }
 
 struct SwapRouteJson {
+  uint256[] feeFactors;
   address[] pairsPath;
-  uint256[] swapFees;
   address[] tokensPath;
 }
 
@@ -55,9 +55,9 @@ library VenusStratConfigJsonLib {
   function mapSwapRoute(SwapRouteJson memory swapRouteJson)
     internal
     pure
-    returns (SwapRoute memory swapRoute)
+    returns (UniswapV2Helper.SwapRoute memory swapRoute)
   {
-    swapRoute.swapFees = swapRouteJson.swapFees;
+    swapRoute.feeFactors = swapRouteJson.feeFactors;
     swapRoute.pairsPath = swapRouteJson.pairsPath;
     swapRoute.tokensPath = swapRouteJson.tokensPath;
   }

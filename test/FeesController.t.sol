@@ -4,18 +4,18 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {UniswapTestBase} from "./test-bases/UniswapTestBase.sol";
+import {UniswapV2TestBase} from "./test-bases/UniswapV2TestBase.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {
   MultiRolesAuthority,
   Authority
 } from "solmate/auth/authorities/MultiRolesAuthority.sol";
 
-import {SwapRoute} from "../src/libraries/StratX4LibEarn.sol";
+import {UniswapV2Helper} from "../src/libraries/UniswapV2Helper.sol";
 import {Roles} from "../src/auth/Auth.sol";
 import {AutofarmFeesController} from "../src/FeesController.sol";
 
-contract FeesControllerTestBase is UniswapTestBase {
+contract FeesControllerTestBase is UniswapV2TestBase {
   AutofarmFeesController public feesController;
 
   address public treasury = makeAddr("treasury");
@@ -59,18 +59,18 @@ contract FeesControllerTest is FeesControllerTestBase {
 
     address[] memory pairsPath = new address[](1);
     address[] memory tokensPath = new address[](1);
-    uint256[] memory swapFees = new uint256[](1);
+    uint256[] memory feeFactors = new uint256[](1);
 
     (pairsPath[0],) = addLiquidity(
       address(rewardToken), address(AUTOv2), 1 ether, 1 ether, address(0)
     );
     tokensPath[0] = address(AUTOv2);
-    swapFees[0] = 9970;
+    feeFactors[0] = 9970;
 
-    SwapRoute memory swapRoute = SwapRoute({
+    UniswapV2Helper.SwapRoute memory swapRoute = UniswapV2Helper.SwapRoute({
       pairsPath: pairsPath,
       tokensPath: tokensPath,
-      swapFees: swapFees
+      feeFactors: feeFactors
     });
 
     vm.prank(deployer);

@@ -9,11 +9,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {StratX4Compounding} from "../StratX4Compounding.sol";
 import {IMinichefV2} from "../interfaces/IMinichef.sol";
-import {
-  StratX4LibEarn,
-  ZapLiquidityConfig,
-  SwapRoute
-} from "../libraries/StratX4LibEarn.sol";
+import {UniswapV2Helper} from "../libraries/UniswapV2Helper.sol";
 
 contract StratX4MinichefLP1 is StratX4Compounding {
   using SafeTransferLib for ERC20;
@@ -27,8 +23,8 @@ contract StratX4MinichefLP1 is StratX4Compounding {
     address _farmContractAddress,
     uint256 _pid,
     address _mainRewardToken,
-    SwapRoute memory _swapRoute,
-    ZapLiquidityConfig memory _zapLiquidityConfig
+    UniswapV2Helper.SwapRoute memory _swapRoute,
+    UniswapV2Helper.ZapLiquidityConfig memory _zapLiquidityConfig
   )
     StratX4Compounding(
       _asset,
@@ -69,15 +65,19 @@ contract StratX4MinichefLP1 is StratX4Compounding {
   }
 
   function _compound(
-    address earnedAddress,
+    address /* earnedAddress */,
     uint256 earnedAmount,
     bytes memory compoundConfigData
   ) internal override returns (uint256) {
-    (SwapRoute memory swapRoute, ZapLiquidityConfig memory zapLiquidityConfig) =
-      abi.decode(compoundConfigData, (SwapRoute, ZapLiquidityConfig));
+    (
+      UniswapV2Helper.SwapRoute memory swapRoute,
+      UniswapV2Helper.ZapLiquidityConfig memory zapLiquidityConfig
+    ) = abi.decode(
+      compoundConfigData, (UniswapV2Helper.SwapRoute, UniswapV2Helper.ZapLiquidityConfig)
+    );
 
-    return StratX4LibEarn.swapExactTokensToLiquidity1(
-      earnedAddress, address(asset), earnedAmount, swapRoute, zapLiquidityConfig
+    return UniswapV2Helper.swapExactTokensToLiquidity1(
+      address(asset), earnedAmount, swapRoute, zapLiquidityConfig
     );
   }
 }

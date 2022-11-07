@@ -11,7 +11,7 @@ import {
   IUniswapV2Pair
 } from "../../src/interfaces/Uniswap.sol";
 
-abstract contract UniswapTestBase is Test {
+abstract contract UniswapV2TestBase is Test {
   IUniswapV2Factory public immutable factory;
 
   constructor() {

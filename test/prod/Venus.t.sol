@@ -14,9 +14,6 @@ import {MultiRolesAuthority} from
 import {AutofarmFeesController} from "../../src/FeesController.sol";
 import {StratX4Venus} from "../../src/implementations/Venus.sol";
 import {
-  SwapRoute, ZapLiquidityConfig
-} from "../../src/libraries/StratX4LibEarn.sol";
-import {
   VenusStratConfigJsonLib,
   EarnConfig
 } from "../../src/json-parsers/VenusStratConfigJsonLib.sol";

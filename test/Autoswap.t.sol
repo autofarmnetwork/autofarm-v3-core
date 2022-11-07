@@ -9,7 +9,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {WETH} from "solmate/tokens/WETH.sol";
 import "@uniswap/v2-core/interfaces/IUniswapV2Factory.sol";
 import {AutoSwapV5} from "../src/Autoswap.sol";
-import {UniswapTestBase} from "./test-bases/UniswapTestBase.sol";
+import {UniswapV2TestBase} from "./test-bases/UniswapV2TestBase.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockStrat} from "./mocks/MockStrat.sol";
 
@@ -32,7 +32,7 @@ bytes32 constant PERMIT_TYPEHASH = keccak256(
   "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
 );
 
-contract AutoswapTest is UniswapTestBase {
+contract AutoswapTest is UniswapV2TestBase {
   AutoSwapV5 public autoswap;
   WETH public weth = new WETH();
   address public factory2;
@@ -317,7 +317,7 @@ contract AutoswapTest is UniswapTestBase {
   }
 }
 
-contract AutoswapZapTest is UniswapTestBase {
+contract AutoswapZapTest is UniswapV2TestBase {
   AutoSwapV5 public autoswap;
   WETH public weth = new WETH();
   address public immutable TOKEN0 = address(new MockERC20());

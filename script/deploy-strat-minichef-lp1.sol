@@ -16,9 +16,6 @@ import {MultiRolesAuthority} from
 import {AutofarmFeesController} from "../src/FeesController.sol";
 import {StratX4MinichefLP1} from "../src/implementations/MinichefLP1.sol";
 import {
-  SwapRoute, ZapLiquidityConfig
-} from "../src/libraries/StratX4LibEarn.sol";
-import {
   StratConfigJsonLib,
   EarnConfig
 } from "../src/json-parsers/StratConfigJsonLib.sol";

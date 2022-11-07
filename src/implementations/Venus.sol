@@ -5,7 +5,7 @@ import {Authority} from "solmate/auth/Auth.sol";
 
 import {StratX4Compounding} from "../StratX4Compounding.sol";
 import {IVToken, IVenusUnitroller} from "../interfaces/Venus.sol";
-import {StratX4LibEarn, SwapRoute} from "../libraries/StratX4LibEarn.sol";
+import {UniswapV2Helper} from "../libraries/UniswapV2Helper.sol";
 
 error VenusError(uint256 returnCode);
 
@@ -20,7 +20,7 @@ contract StratX4Venus is StratX4Compounding {
     Authority _authority,
     address _farmContractAddress, // VToken
     address _mainRewardToken,
-    SwapRoute memory _swapRoute
+    UniswapV2Helper.SwapRoute memory _swapRoute
   )
     StratX4Compounding(
       _asset,
@@ -78,16 +78,17 @@ contract StratX4Venus is StratX4Compounding {
   }
 
   function _compound(
-    address earnedAddress,
+    address /* earnedAddress */,
     uint256 earnedAmount,
     bytes memory compoundConfigData
   ) internal override returns (uint256) {
-    SwapRoute memory swapRoute = abi.decode(compoundConfigData, (SwapRoute));
+    UniswapV2Helper.SwapRoute memory swapRoute =
+      abi.decode(compoundConfigData, (UniswapV2Helper.SwapRoute));
 
-    return StratX4LibEarn.swapExactTokensForTokens(
-      earnedAddress,
+    return UniswapV2Helper.swapExactTokensForTokens(
       earnedAmount,
-      swapRoute.swapFees,
+      1,
+      swapRoute.feeFactors,
       swapRoute.pairsPath,
       swapRoute.tokensPath
     );

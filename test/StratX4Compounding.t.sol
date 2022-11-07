@@ -6,14 +6,10 @@ import "forge-std/console2.sol";
 import {Authority} from "solmate/auth/Auth.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
-import {
-  SwapRoute, ZapLiquidityConfig
-} from "../src/libraries/StratX4LibEarn.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockAuthority} from "./mocks/MockAuthority.sol";
 import {IMasterchefV2} from "../src/interfaces/IMasterchefV2.sol";
 import {StratX4Compounding} from "../src/StratX4Compounding.sol";
-import {UniswapTestBase} from "./test-bases/UniswapTestBase.sol";
 
 contract MockStrat is StratX4Compounding {
   constructor(
