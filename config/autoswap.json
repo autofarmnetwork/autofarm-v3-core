@@ -1,0 +1,13 @@
+{
+  "9001": {
+    "WETH": "0xD4949664cD82660AaE99bEdc034a0deA8A0bd517",
+    "dexes": [
+      {
+        "addr": "0x6aBdDa34Fb225be4610a2d153845e09429523Cd2",
+        "dexType": 1,
+        "fee": 9970,
+        "initHashCode": "0xa192c894487128ec7b68781ed7bd7e3141d1718df9e4e051e0124b7671d9a6ef"
+      }
+    ]
+  }
+}
