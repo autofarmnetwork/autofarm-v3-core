@@ -241,7 +241,7 @@ contract AutoSwapV5 is Owned {
         subswapInAmount = tokenInBalance.mulDivDown(relativeAmount.amount, 1e8);
       }
       if (dexConfig.dexType == RouterTypes.Uniswap) {
-        UniswapV2Helper.swap(
+        UniswapV2Helper.swapWithTransferIn(
           UniswapV2Helper.getPair(
             dexAddress, dexConfig.INIT_HASH_CODE, _swap.tokenIn, _swap.tokenOut
           ),
@@ -386,7 +386,6 @@ contract AutoSwapV5 is Owned {
       lpSwapOptions,
       address(this)
     );
-    ERC20(asset).balanceOf(address(this));
     ERC20(asset).approve(strat, amountOut);
     IERC4626(strat).deposit(amountOut, msg.sender);
   }
@@ -570,8 +569,8 @@ contract AutoSwapV5 is Owned {
       pair, dexConfig.fee, baseAmountIn, lpSwapOptions.base, lpSwapOptions.token
     );
     amountOut0 = baseAmountIn - swapAmount;
-    require(amountOut0 >= lpSwapOptions.amountOutMin0);
-    require(amountOut1 >= lpSwapOptions.amountOutMin1);
+    require(amountOut0 >= lpSwapOptions.amountOutMin0, "amountOut0 less than min");
+    require(amountOut1 >= lpSwapOptions.amountOutMin1, "amountOut1 less than min");
 
     amountOut = UniswapV2Helper.addLiquidityFromOneSide(
       pair,

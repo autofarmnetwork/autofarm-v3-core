@@ -326,7 +326,9 @@ contract AutoswapZapTest is UniswapV2TestBase {
   uint256 public userPrivateKey = 0xBEEF;
   address public user = vm.addr(userPrivateKey);
   MockStrat public strat;
+  MockStrat public stratWETH;
   address public asset;
+  address public assetWithWETH;
 
   function setUp() public {
     autoswap = new AutoSwapV5(payable(address(weth)), address(this));
@@ -340,9 +342,16 @@ contract AutoswapZapTest is UniswapV2TestBase {
     );
 
     (asset,) = addLiquidity(TOKEN0, TOKEN1, 1 ether, 1 ether, address(0));
+    (assetWithWETH,) = addLiquidity(TOKEN0, address(weth), 1 ether, 1 ether, address(0));
 
     strat = new MockStrat(
       asset,
+      makeAddr("farm"),
+      makeAddr("feesController"),
+      Authority(address(0))
+    );
+    stratWETH = new MockStrat(
+      assetWithWETH,
       makeAddr("farm"),
       makeAddr("feesController"),
       Authority(address(0))
@@ -412,6 +421,71 @@ contract AutoswapZapTest is UniswapV2TestBase {
     assertEq(MockStrat(strat).balanceOf(address(this)), outAmount);
   }
 
+  function testZapToLP1FromETH(uint96 amountIn) public returns (uint256 outAmount) {
+    vm.assume(amountIn > 0.1 ether);
+    addLiquidity(TOKEN0, address(weth), 1 ether, 1 ether, address(0));
+    deal(address(this), amountIn);
+    address[] memory dexes = new address[](1);
+    dexes[0] = address(factory);
+
+    AutoSwapV5.OneSwap[] memory swapsToBase = new AutoSwapV5.OneSwap[](1);
+    AutoSwapV5.RelativeAmount[] memory relativeAmounts =
+      new AutoSwapV5.RelativeAmount[](1);
+    relativeAmounts[0] =
+      AutoSwapV5.RelativeAmount({dexIndex: 0, amount: 1e8, data: ""});
+
+    swapsToBase[0] = AutoSwapV5.OneSwap({
+      tokenIn: payable(address(weth)),
+      tokenOut: TOKEN0,
+      relativeAmounts: relativeAmounts
+    });
+
+    uint256 amountOut0;
+    uint256 amountOut1;
+    (outAmount, amountOut0, amountOut1) = autoswap.zapToLP1FromETH{value: amountIn}(
+      dexes,
+      AutoSwapV5.LP1SwapOptions({
+        base: TOKEN0,
+        token: TOKEN1,
+        amountOutMin0: 1,
+        amountOutMin1: 1,
+        swapsToBase: swapsToBase
+      }),
+      block.timestamp,
+      address(strat)
+    );
+
+    assertGt(outAmount, 0, "No output");
+    assertEq(MockStrat(strat).balanceOf(address(this)), outAmount);
+  }
+
+  function testSimpleZapToLP1FromETH(uint96 amountIn) public returns (uint256 outAmount) {
+    vm.assume(amountIn > 0.1 ether);
+    deal(address(this), amountIn);
+    address[] memory dexes = new address[](1);
+    dexes[0] = address(factory);
+
+    AutoSwapV5.OneSwap[] memory swapsToBase = new AutoSwapV5.OneSwap[](0);
+
+    uint256 amountOut0;
+    uint256 amountOut1;
+    (outAmount, amountOut0, amountOut1) = autoswap.zapToLP1FromETH{value: amountIn}(
+      dexes,
+      AutoSwapV5.LP1SwapOptions({
+        base: payable(address(weth)),
+        token: TOKEN0,
+        amountOutMin0: 1,
+        amountOutMin1: 1,
+        swapsToBase: swapsToBase
+      }),
+      block.timestamp,
+      address(stratWETH)
+    );
+
+    assertGt(outAmount, 0, "No output");
+    assertEq(MockStrat(stratWETH).balanceOf(address(this)), outAmount);
+  }
+
   function testZapFromLP1() public {
     (, uint256 liquidity) = addLiquidity(TOKEN0, TOKEN1, 1 ether, 1 ether, user);
 
@@ -431,7 +505,7 @@ contract AutoswapZapTest is UniswapV2TestBase {
     ERC20(strat).approve(address(autoswap), liquidity);
 
     vm.prank(user);
-    autoswap.zapFromLP1Strat(
+    uint256 amountOut = autoswap.zapFromLP1Strat(
       TOKEN1,
       liquidity,
       1,
@@ -444,6 +518,7 @@ contract AutoswapZapTest is UniswapV2TestBase {
       block.timestamp,
       address(strat)
     );
+    assertGt(amountOut, 0, "No amount out");
   }
 
   function testZapFromLP1ToETH() public {
