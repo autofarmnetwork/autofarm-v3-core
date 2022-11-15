@@ -45,6 +45,8 @@ contract Keeper is Auth {
     );
 
     profits = new uint256[](strats.length);
+    earnedAmounts = new uint256[](strats.length);
+    feesCollected = new uint256[](strats.length);
 
     for (uint256 i; i < strats.length;) {
       try IStratX4(strats[i]).earn(earnedAddresses[i], minAmountsOut[i])
