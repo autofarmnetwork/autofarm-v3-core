@@ -17,7 +17,7 @@ contract StratX4Test is Test {
   using FixedPointMathLib for uint256;
 
   ERC20 public asset;
-  ERC20 public rewardToken;
+  ERC20 public earnedToken;
   Authority public authority;
   MockStrat public strat;
   address public feesController;
@@ -42,7 +42,7 @@ contract StratX4Test is Test {
 
   function setUp() public {
     asset = new MockERC20();
-    rewardToken = new MockERC20();
+    earnedToken = new MockERC20();
     authority = new MockAuthority();
     feesController = makeAddr("feesController");
     farmContractAddress = makeAddr("farm");
@@ -142,43 +142,43 @@ contract StratX4Test is Test {
 
   function testEarnNothingHarvested() public {
     vm.expectRevert("StratX4: Nothing earned after fee collection");
-    strat.earn(address(rewardToken), 1);
+    strat.earn(address(earnedToken), 1);
   }
 
   function testEarnNoProfit() public {
     uint256 earnedAmount = strat.minEarnedAmountToHarvest() - 1;
-    deal(address(rewardToken), address(strat), earnedAmount);
+    deal(address(earnedToken), address(strat), earnedAmount);
     vm.mockCall(
       address(strat),
       abi.encodeWithSelector(MockStrat.mock__compound.selector),
       abi.encode(0)
     );
     vm.expectRevert("StratX4: Earn produces less than minAmountOut");
-    strat.earn(address(rewardToken), 1);
+    strat.earn(address(earnedToken), 1);
   }
 
   function testEarn(uint96 earnedAmount, uint96 profit) public {
-    strat.debug__warmFeesCollectable(address(rewardToken));
+    strat.debug__warmFeesCollectable(address(earnedToken));
     uint256 minHarvest = strat.minEarnedAmountToHarvest();
     vm.assume(earnedAmount >= minHarvest && profit > 1);
 
     vm.expectEmit(false, false, false, true, address(strat));
     emit FarmHarvest();
     vm.expectEmit(false, false, false, false, address(strat));
-    emit FeeSetAside(address(rewardToken), 0);
+    emit FeeSetAside(address(earnedToken), 0);
     vm.expectEmit(false, false, false, true, address(strat));
     emit FarmDeposit(profit - 1);
     vm.expectEmit(true, false, false, false, address(strat));
-    emit Earn(address(rewardToken), 0, 0, 0);
+    emit Earn(address(earnedToken), 0, 0, 0);
 
-    deal(address(rewardToken), address(strat), earnedAmount);
+    deal(address(earnedToken), address(strat), earnedAmount);
 
     vm.mockCall(
       address(strat),
       abi.encodeWithSelector(MockStrat.mock__compound.selector),
       abi.encode(profit)
     );
-    strat.earn(address(rewardToken), 1);
+    strat.earn(address(earnedToken), 1);
   }
 
   function testHandleFees(uint96[] memory harvests) public {
@@ -187,7 +187,7 @@ contract StratX4Test is Test {
     uint256 totalFees;
 
     // Comment or uncomment to check cold vs warm SSTORE gas usage
-    strat.debug__warmFeesCollectable(address(rewardToken));
+    strat.debug__warmFeesCollectable(address(earnedToken));
 
     uint256 minHarvest = strat.minEarnedAmountToHarvest();
 
@@ -201,17 +201,17 @@ contract StratX4Test is Test {
       totalFees += expectedFee;
 
       vm.expectEmit(true, false, false, true, address(strat));
-      emit FeeSetAside(address(rewardToken), expectedFee);
+      emit FeeSetAside(address(earnedToken), expectedFee);
 
       // simulate harvest rewards
       deal(
-        address(rewardToken),
+        address(earnedToken),
         address(strat),
-        rewardToken.balanceOf(address(strat)) + harvested
+        earnedToken.balanceOf(address(strat)) + harvested
       );
 
       (uint256 earnedAmount, uint256 fee) =
-        strat.public__handleFees(address(rewardToken));
+        strat.public__handleFees(address(earnedToken));
 
       assertEq(fee, expectedFee, "fee should equal expected");
       assertEq(
@@ -222,32 +222,32 @@ contract StratX4Test is Test {
 
       // Simulate compounding the rewards
       deal(
-        address(rewardToken),
+        address(earnedToken),
         address(strat),
-        rewardToken.balanceOf(address(strat)) + expectedFee - harvested
+        earnedToken.balanceOf(address(strat)) + expectedFee - harvested
       ); // simulate harvest rewards
     }
 
     assertEq(
-      strat.feesCollectable(address(rewardToken)).get(),
+      strat.feesCollectable(address(earnedToken)).get(),
       totalFees,
       "Collectible fees should add up"
     );
 
-    // deal(address(rewardToken), feesController, 1); // simulate 1 wei optimization on feesController
+    // deal(address(earnedToken), feesController, 1); // simulate 1 wei optimization on feesController
 
     if (totalFees == 0) {
       vm.expectRevert("No fees collectable");
     }
-    strat.collectFees(address(rewardToken));
+    strat.collectFees(address(earnedToken));
     if (totalFees > 0) {
       assertEq(
-        rewardToken.balanceOf(strat.feesController()),
+        earnedToken.balanceOf(strat.feesController()),
         totalFees,
         "Rewards should be sent to feesController according to feeRate"
       );
       assertEq(
-        strat.collectableFee(address(rewardToken)),
+        strat.collectableFee(address(earnedToken)),
         1,
         "After collection there should be 1 wei left"
       );
@@ -413,5 +413,135 @@ contract StratX4Test is Test {
 
     vm.expectRevert("StratX4: Illegal target");
     strat.rescueOperation(targets, dataArr);
+  }
+}
+
+abstract contract StratX4RewarderTestBase is Test {
+  using FixedPointMathLib for uint256;
+
+  ERC20 public asset;
+  ERC20 public rewardToken;
+  Authority public authority;
+  MockStrat public strat;
+  address public feesController;
+  address public farmContractAddress;
+  address public user;
+  uint256 public userPrivateKey = 0xBEEF;
+  uint256 public emissionRate = 1e15;
+  uint256 public duration = 4 weeks;
+
+  address public rewarder;
+
+  function setUp() public virtual {
+    asset = new MockERC20();
+    rewardToken = new MockERC20();
+    authority = new MockAuthority();
+    feesController = makeAddr("feesController");
+    farmContractAddress = makeAddr("farm");
+    user = vm.addr(userPrivateKey);
+    strat = new MockStrat(
+      address(asset),
+      farmContractAddress,
+      feesController,
+      authority
+    );
+
+    deal(address(rewardToken), address(this), 1e18 ether);
+    rewardToken.approve(address(strat), type(uint256).max);
+    rewarder = strat.setRewarder(address(rewardToken), emissionRate, block.timestamp, block.timestamp + duration);
+
+    uint256 amount = 1 ether;
+    deal(address(asset), address(user), type(uint256).max);
+
+    vm.startPrank(user);
+    asset.approve(address(strat), type(uint256).max);
+    strat.deposit(amount, address(user));
+    deal(address(asset), farmContractAddress, 1 ether);
+
+    vm.stopPrank();
+  }
+}
+
+contract StratX4RewarderTest is StratX4RewarderTestBase {
+  function setUp() public override {
+    super.setUp();
+    vm.warp(block.timestamp + 1 days);
+    deal(address(asset), address(strat), 1 ether);
+  }
+
+  function testRewardEmitted() public {
+    vm.prank(user);
+    strat.withdraw(1 ether, address(user), address(user));
+    assertEq(rewardToken.balanceOf(user), 1 days * emissionRate, "no rewards");
+  }
+}
+
+contract StratX4RewarderBulkTest is StratX4RewarderTestBase {
+  function setUp() public override {
+    super.setUp();
+    vm.startPrank(user);
+  }
+
+  struct Deposit {
+    uint96 amount;
+    uint16 time;
+  }
+
+  function testMultipleDeposits(Deposit[] memory deposits) public {
+    vm.assume(deposits.length > 0);
+    uint256 totalTime;
+    assertEq(strat.balanceOf(user), 1 ether, "user should already have 1 ether");
+
+    for (uint i; i < deposits.length; i++) {
+      vm.assume(deposits[i].amount > 0 && deposits[i].amount < 1e24);
+      totalTime += deposits[i].time;
+      vm.warp(block.timestamp + deposits[i].time);
+      strat.deposit(deposits[i].amount, address(user));
+      deal(address(asset), farmContractAddress, asset.balanceOf(farmContractAddress) + deposits[i].amount);
+    }
+
+    if (totalTime > duration) {
+      totalTime = duration;
+    }
+    // There are always rounding issue with accRewardsPerShare
+    assertApproxEqRel(rewardToken.balanceOf(user), totalTime * emissionRate, 0.0001e18, "Rewards emitted does not match expectation");
+  }
+}
+
+contract StratX4RewarderTestAfterRemoval is StratX4RewarderTestBase {
+  function setUp() public override {
+    super.setUp();
+    vm.warp(block.timestamp + 6 weeks);
+    deal(address(asset), farmContractAddress, 1 ether);
+    deal(address(asset), address(strat), 1 ether);
+    vm.prank(user);
+    strat.withdraw(0.5 ether, address(user), address(user));
+    deal(address(rewardToken), user, 0);
+    strat.removeRewarder();
+    vm.warp(block.timestamp + 1 weeks);
+  }
+
+  function testAfterRewarderRemoved() public {
+    vm.prank(user);
+    strat.withdraw(0.1 ether, address(user), address(user));
+  }
+}
+
+contract StratX4RewarderTestAfterEndTime is StratX4RewarderTestBase {
+  function setUp() public override {
+    super.setUp();
+    vm.warp(block.timestamp + 6 weeks);
+    deal(address(asset), farmContractAddress, 1 ether);
+    deal(address(asset), address(strat), 1 ether);
+    vm.prank(user);
+    strat.withdraw(0.5 ether, address(user), address(user));
+    deal(address(rewardToken), user, 0);
+    vm.warp(block.timestamp + 1 weeks);
+  }
+
+  function testRewardEmitted() public {
+    vm.prank(user);
+    strat.withdraw(0.1 ether, address(user), address(user));
+    assertApproxEqRel(rewardToken.balanceOf(user), 0, 0.001e18, "should output no rewards after emissions end");
   }
 }

@@ -1,11 +1,11 @@
-//               _         __                 __      ______  
-//              | |       / _|                \ \    / /___ \ 
-//    __ _ _   _| |_ ___ | |_ __ _ _ __ _ __ __\ \  / /  __) |
-//   / _` | | | | __/ _ \|  _/ _` | '__| '_ ` _ \ \/ /  |__ < 
-//  | (_| | |_| | || (_) | || (_| | |  | | | | | \  /   ___) |
-//   \__,_|\__,_|\__\___/|_| \__,_|_|  |_| |_| |_|\/   |____/
-
 // SPDX-License-Identifier: MIT
+//              _         __                 __      ______  
+//             | |       / _|                \ \    / /___ \ 
+//   __ _ _   _| |_ ___ | |_ __ _ _ __ _ __ __\ \  / /  __) |
+//  / _` | | | | __/ _ \|  _/ _` | '__| '_ ` _ \ \/ /  |__ < 
+// | (_| | |_| | || (_) | || (_| | |  | | | | | \  /   ___) |
+//  \__,_|\__,_|\__\___/|_| \__,_|_|  |_| |_| |_|\/   |____/ 
+
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
@@ -15,8 +15,9 @@ import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {Auth, Authority} from "solmate/auth/authorities/RolesAuthority.sol";
 import {Pausable} from "openzeppelin/security/Pausable.sol";
 import {FlippedUint256, FlippedUint256Lib} from "./libraries/FlippedUint.sol";
+import {RewardableVault} from "./RewardableVault.sol";
 
-abstract contract StratX4 is ERC4626, Auth, Pausable {
+abstract contract StratX4 is Auth, Pausable, RewardableVault {
   using SafeTransferLib for ERC20;
   using FixedPointMathLib for uint256;
   using FixedPointMathLib for uint160;
