@@ -12,7 +12,7 @@ import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 
 interface IStratX4 {
-  function rewarder() external view returns (address);
+  function rewarders(uint256 index) external view returns (address);
 }
 
 contract VaultRewarderTime {
@@ -37,24 +37,32 @@ contract VaultRewarderTime {
   uint256 public immutable rewardTokensPerSecond;
   uint256 public immutable startTime;
   uint256 public immutable endTime;
+  uint256 public immutable index;
+  address public immutable benefactor;
 
   modifier onlyStrat() {
     require(msg.sender == address(strat), "RewardsV4: UNAUTHORIZED");
-    require(IStratX4(address(strat)).rewarder() == address(this), "RewardsV4: Deprecated");
     _;
   }
 
   modifier whenActive() {
-    require(IStratX4(address(strat)).rewarder() == address(this), "RewardsV4: Deprecated");
+    require(IStratX4(address(strat)).rewarders(index) == address(this), "RewardsV4: Deprecated");
+    _;
+  }
+
+  modifier whenInactive() {
+    require(IStratX4(address(strat)).rewarders(index) != address(this), "RewardsV4: Deprecated");
     _;
   }
 
   constructor(
     address _strat,
+    uint256 _index,
     address _rewardToken,
     uint256 _emission,
     uint256 _startTime,
-    uint256 _endTime
+    uint256 _endTime,
+    address _benefactor
   ) {
     require(
       _startTime >= block.timestamp, "start timestamp must be in the future"
@@ -66,10 +74,12 @@ contract VaultRewarderTime {
     require(_rewardToken != _strat, "Reward token cannot have the same address as strat");
 
     strat = ERC20(_strat);
+    index = _index;
     rewardToken = ERC20(_rewardToken);
     rewardTokensPerSecond = _emission;
     startTime = _startTime;
     endTime = _endTime;
+    benefactor = _benefactor;
 
     poolInfo.lastRewardTime = uint40(
       block.timestamp > startTime ? block.timestamp : startTime
@@ -213,5 +223,10 @@ contract VaultRewarderTime {
     }
 
     user.rewardDebt = rewardDebt;
+  }
+
+  function deprecate() public whenInactive {
+    uint256 remainingBalance = rewardToken.balanceOf(address(this));
+    rewardToken.safeTransfer(benefactor, remainingBalance);
   }
 }

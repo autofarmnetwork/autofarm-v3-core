@@ -17,7 +17,8 @@ import {Pausable} from "openzeppelin/security/Pausable.sol";
 import {FlippedUint256, FlippedUint256Lib} from "./libraries/FlippedUint.sol";
 import {RewardableVault} from "./RewardableVault.sol";
 
-abstract contract StratX4 is Auth, Pausable, RewardableVault {
+
+abstract contract StratX4 is Auth, Pausable, ERC4626, RewardableVault {
   using SafeTransferLib for ERC20;
   using FixedPointMathLib for uint256;
   using FixedPointMathLib for uint160;
@@ -81,6 +82,24 @@ abstract contract StratX4 is Auth, Pausable, RewardableVault {
   ) public {
     asset.permit(msg.sender, address(this), assets, deadline, v, r, s);
     deposit(assets, receiver);
+  }
+
+  ///// RewardableVault compatibility /////
+
+  function _burn(address from, uint256 amount) internal override(ERC20, RewardableVault) {
+    return super._burn(from, amount);
+  }
+
+  function _mint(address to, uint256 amount) internal override(ERC20, RewardableVault) {
+    return super._mint(to, amount);
+  }
+
+  function transfer(address to, uint256 amount) public override(ERC20, RewardableVault) returns (bool success) {
+    return super.transfer(to, amount);
+  }
+
+  function transferFrom(address from, address to, uint256 amount) public override(ERC20, RewardableVault) returns (bool success) {
+    return super.transferFrom(from, to, amount);
   }
 
   ///// ERC4626 compatibility /////
@@ -328,6 +347,8 @@ abstract contract StratX4 is Auth, Pausable, RewardableVault {
       targets.length == data.length, "StratX4: targets data length mismatch"
     );
 
+    address[MAX_CONCURRENT_REWARDERS] memory _rewarders = rewarders;
+
     for (uint256 i; i < targets.length; i++) {
       // Try to rescue the funds to this contract, and let people
       // withdraw from this contract
@@ -335,6 +356,10 @@ abstract contract StratX4 is Auth, Pausable, RewardableVault {
         targets[i] != address(asset) && targets[i] != address(this),
         "StratX4: Illegal target"
       );
+      for (uint j; j < MAX_CONCURRENT_REWARDERS;) {
+        require(targets[i] != _rewarders[j], "StratX4: Illegal target");
+        unchecked { j++; }
+      }
       (bool succeeded,) = targets[i].call(data[i]);
       require(succeeded, "!succeeded");
     }

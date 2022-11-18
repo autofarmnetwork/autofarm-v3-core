@@ -517,7 +517,8 @@ contract StratX4RewarderTestAfterRemoval is StratX4RewarderTestBase {
     vm.prank(user);
     strat.withdraw(0.5 ether, address(user), address(user));
     deal(address(rewardToken), user, 0);
-    strat.removeRewarder();
+    vm.warp(block.timestamp + 6 weeks);
+    strat.removeRewarder(0);
     vm.warp(block.timestamp + 1 weeks);
   }
 
